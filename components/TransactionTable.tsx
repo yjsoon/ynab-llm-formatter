@@ -62,19 +62,19 @@ export default function TransactionTable({ transactions }: TransactionTableProps
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-800 uppercase tracking-wider">
                   Date
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-800 uppercase tracking-wider">
                   Payee
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-800 uppercase tracking-wider">
                   Memo
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider">
+                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-800 uppercase tracking-wider">
                   Outflow
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider">
+                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-800 uppercase tracking-wider">
                   Inflow
                 </th>
               </tr>
@@ -87,7 +87,7 @@ export default function TransactionTable({ transactions }: TransactionTableProps
                       type="text"
                       value={transaction.date}
                       onChange={(e) => handleEdit(index, 'date', e.target.value)}
-                      className="w-full px-2 py-1 text-sm border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
+                      className="w-full px-2 py-1 text-base text-slate-900 font-medium border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
                     />
                   </td>
                   <td className="px-4 py-3">
@@ -95,7 +95,7 @@ export default function TransactionTable({ transactions }: TransactionTableProps
                       type="text"
                       value={transaction.payee}
                       onChange={(e) => handleEdit(index, 'payee', e.target.value)}
-                      className="w-full px-2 py-1 text-sm border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
+                      className="w-full px-2 py-1 text-base text-slate-900 font-medium border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
                     />
                   </td>
                   <td className="px-4 py-3">
@@ -103,7 +103,7 @@ export default function TransactionTable({ transactions }: TransactionTableProps
                       type="text"
                       value={transaction.memo}
                       onChange={(e) => handleEdit(index, 'memo', e.target.value)}
-                      className="w-full px-2 py-1 text-sm border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
+                      className="w-full px-2 py-1 text-base text-slate-900 font-medium border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
                     />
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -111,7 +111,7 @@ export default function TransactionTable({ transactions }: TransactionTableProps
                       type="text"
                       value={transaction.outflow}
                       onChange={(e) => handleEdit(index, 'outflow', e.target.value)}
-                      className="w-full px-2 py-1 text-sm text-right border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded text-red-600"
+                      className="w-full px-2 py-1 text-base font-medium text-right border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded text-red-700"
                     />
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -119,7 +119,7 @@ export default function TransactionTable({ transactions }: TransactionTableProps
                       type="text"
                       value={transaction.inflow}
                       onChange={(e) => handleEdit(index, 'inflow', e.target.value)}
-                      className="w-full px-2 py-1 text-sm text-right border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded text-green-600"
+                      className="w-full px-2 py-1 text-base font-medium text-right border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded text-green-700"
                     />
                   </td>
                 </tr>
