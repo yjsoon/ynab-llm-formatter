@@ -10,37 +10,55 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [processingProgress, setProcessingProgress] = useState<string>('');
 
-  const handleFileProcess = async (file: File) => {
+  const handleFileProcess = async (files: File[]) => {
     setIsLoading(true);
     setError(null);
     setWarning(null);
+    setTransactions([]);
 
-    const formData = new FormData();
-    formData.append('file', file);
+    const allTransactions: Transaction[] = [];
+    const errors: string[] = [];
 
-    try {
-      const response = await fetch('/api/process-statement', {
-        method: 'POST',
-        body: formData,
-      });
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setProcessingProgress(`Processing ${i + 1} of ${files.length}: ${file.name}`);
 
-      const data = await response.json();
+      const formData = new FormData();
+      formData.append('file', file);
 
-      if (!response.ok) {
-        setError(data.error || 'Failed to process statement');
-        setTransactions(data.transactions || []);
-      } else {
-        setTransactions(data.transactions || []);
-        if (data.warning) {
-          setWarning(data.warning);
+      try {
+        const response = await fetch('/api/process-statement', {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          errors.push(`${file.name}: ${data.error || 'Failed to process'}`);
+        } else if (data.transactions && data.transactions.length > 0) {
+          allTransactions.push(...data.transactions);
         }
+      } catch (err) {
+        errors.push(`${file.name}: ${err instanceof Error ? err.message : 'Something went wrong'}`);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setIsLoading(false);
     }
+
+    // Sort all transactions by date in reverse order (newest first)
+    const sortedTransactions = allTransactions.sort((a, b) => {
+      const dateA = new Date(a.date || '');
+      const dateB = new Date(b.date || '');
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    setTransactions(sortedTransactions);
+    if (errors.length > 0) {
+      setError(errors.join('\n'));
+    }
+    setProcessingProgress('');
+    setIsLoading(false);
   };
 
   return (
@@ -51,14 +69,20 @@ export default function Home() {
             Credit Card Statement Converter
           </h1>
           <p className="text-slate-600 text-center mb-8">
-            Upload your statement and convert it to YNAB-compatible CSV format
+            Upload multiple statements and convert them to YNAB-compatible CSV format
           </p>
 
           <FileUploader onFileProcess={handleFileProcess} isLoading={isLoading} />
 
+          {processingProgress && (
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-blue-700 font-medium">{processingProgress}</p>
+            </div>
+          )}
+
           {error && (
             <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700">{error}</p>
+              <p className="text-red-700 whitespace-pre-line">{error}</p>
             </div>
           )}
 

@@ -3,14 +3,14 @@
 import { useRef, useState } from 'react';
 
 interface FileUploaderProps {
-  onFileProcess: (file: File) => void;
+  onFileProcess: (files: File[]) => void;
   isLoading: boolean;
 }
 
 export default function FileUploader({ onFileProcess, isLoading }: FileUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -27,26 +27,47 @@ export default function FileUploader({ onFileProcess, isLoading }: FileUploaderP
     e.stopPropagation();
     setDragActive(false);
 
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFiles(Array.from(e.dataTransfer.files));
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault();
-    if (e.target.files && e.target.files[0]) {
-      handleFile(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) {
+      handleFiles(Array.from(e.target.files));
+      // Reset the input so the same file can be selected again
+      e.target.value = '';
     }
   };
 
-  const handleFile = (file: File) => {
-    setSelectedFile(file);
+  const handleFiles = (files: File[]) => {
+    // Append new files to existing ones instead of replacing
+    setSelectedFiles(prev => {
+      // Create a Set of existing file names to avoid duplicates
+      const existingNames = new Set(prev.map(f => f.name));
+      // Filter out any files that are already selected
+      const newFiles = files.filter(f => !existingNames.has(f.name));
+      return [...prev, ...newFiles];
+    });
+  };
+
+  const clearAllFiles = () => {
+    setSelectedFiles([]);
+    // Reset the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleProcess = () => {
-    if (selectedFile) {
-      onFileProcess(selectedFile);
+    if (selectedFiles.length > 0) {
+      onFileProcess(selectedFiles);
     }
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -68,6 +89,7 @@ export default function FileUploader({ onFileProcess, isLoading }: FileUploaderP
           className="hidden"
           onChange={handleChange}
           accept=".pdf,.png,.jpg,.jpeg"
+          multiple
         />
 
         <div className="flex flex-col items-center justify-center p-12">
@@ -85,19 +107,19 @@ export default function FileUploader({ onFileProcess, isLoading }: FileUploaderP
             />
           </svg>
 
-          {selectedFile ? (
+          {selectedFiles.length > 0 ? (
             <div className="text-center">
               <p className="text-lg font-medium text-slate-700">
-                {selectedFile.name}
+                {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''} selected
               </p>
               <p className="text-sm text-slate-500 mt-1">
-                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                Total size: {(selectedFiles.reduce((acc, file) => acc + file.size, 0) / 1024 / 1024).toFixed(2)} MB
               </p>
             </div>
           ) : (
             <>
               <p className="text-lg font-medium text-slate-700 mb-2">
-                Drop your statement here
+                Drop your statements here
               </p>
               <p className="text-sm text-slate-500 mb-4">
                 or{' '}
@@ -110,32 +132,74 @@ export default function FileUploader({ onFileProcess, isLoading }: FileUploaderP
                 </button>
               </p>
               <p className="text-xs text-slate-400">
-                Supports PDF, PNG, JPG files
+                Supports multiple PDF, PNG, JPG files
               </p>
             </>
           )}
         </div>
       </div>
 
-      {selectedFile && (
-        <div className="mt-4 flex justify-center">
-          <button
-            onClick={handleProcess}
-            disabled={isLoading}
-            className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isLoading ? (
-              <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Processing...
-              </span>
-            ) : (
-              'Process Statement'
-            )}
-          </button>
+      {selectedFiles.length > 0 && (
+        <div className="mt-4">
+          <div className="mb-4 p-4 bg-slate-50 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-slate-700">Selected Files: {selectedFiles.length}</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3 py-1 text-sm bg-white text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors"
+                  type="button"
+                >
+                  + Add More Files
+                </button>
+                <button
+                  onClick={clearAllFiles}
+                  className="px-3 py-1 text-sm bg-white text-red-600 border border-red-600 rounded hover:bg-red-50 transition-colors"
+                  type="button"
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {selectedFiles.map((file, index) => (
+                <div key={`${file.name}-${index}`} className="flex items-center justify-between p-2 bg-white rounded border border-slate-200">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-slate-700">{file.name}</p>
+                    <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                  </div>
+                  <button
+                    onClick={() => removeFile(index)}
+                    className="ml-2 text-red-600 hover:text-red-700"
+                    type="button"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <button
+              onClick={handleProcess}
+              disabled={isLoading}
+              className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isLoading ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Processing {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''}...
+                </span>
+              ) : (
+                `Process ${selectedFiles.length} Statement${selectedFiles.length > 1 ? 's' : ''}`
+              )}
+            </button>
+          </div>
         </div>
       )}
     </div>
