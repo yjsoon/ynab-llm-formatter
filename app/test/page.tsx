@@ -170,65 +170,46 @@ export default function TestPage() {
     setModelStatuses(initialStatuses);
 
     try {
-      // Convert file to base64
+      // Convert file to base64 once
       const bytes = await selectedFile.arrayBuffer();
       const buffer = Buffer.from(bytes);
       const base64 = buffer.toString('base64');
       const mimeType = selectedFile.type || 'image/jpeg';
       const imageData = `data:${mimeType};base64,${base64}`;
 
-      // Process each model individually for live updates
-      const allResults: ModelResult[] = [];
+      const cloneResult = (result: ModelResult): ModelResult => ({
+        ...result,
+        tokens: result.tokens ? { ...result.tokens } : undefined
+      });
 
-      // Start all requests in parallel
-      const promises = selectedModels.map(async (model) => {
-        try {
-          const response = await axios.post('/api/test-models', {
-            models: [model],
-            imageData
-          });
+      const response = await axios.post('/api/test-models', {
+        models: selectedModels,
+        imageData
+      });
 
-          const result = response.data.results[0];
+      const resultsMap = new Map<string, ModelResult>();
+      (response.data?.results as ModelResult[] | undefined)?.forEach(result => {
+        resultsMap.set(result.model, cloneResult(result));
+      });
 
-          // Update status to completed
-          setModelStatuses(prev => prev.map(s =>
-            s.model === model
-              ? { ...s, status: 'completed' as const }
-              : s
-          ));
-
-          return result;
-        } catch (error) {
-          const err = error as Error & { response?: { data?: { error?: string } } };
-          const errorMessage = err.response?.data?.error || err.message;
-
-          // Update status to failed
-          setModelStatuses(prev => prev.map(s =>
-            s.model === model
-              ? { ...s, status: 'failed' as const, error: errorMessage }
-              : s
-          ));
-
-          return {
+      selectedModels.forEach(model => {
+        if (!resultsMap.has(model)) {
+          resultsMap.set(model, {
             model,
             transactions: [],
             processingTime: 0,
-            error: errorMessage,
+            error: 'No response received from server',
             transactionCount: 0,
             totalOutflow: 0,
             totalInflow: 0
-          };
+          });
         }
       });
 
-      const allPromiseResults = await Promise.all(promises);
-
-      // Process results
-      const successfulResults = allPromiseResults.filter(r => !r.error && r.transactionCount > 0);
+      const allResults = Array.from(resultsMap.values());
+      const successfulResults = allResults.filter(r => !r.error && r.transactionCount > 0);
 
       // Find consensus
-      let consensusOutflow = 0;
-      let consensusInflow = 0;
       let consensusCount = 0;
 
       if (successfulResults.length >= 2) {
@@ -244,25 +225,21 @@ export default function TestPage() {
         if (mostCommonCount && mostCommonCount[1] >= Math.ceil(successfulResults.length / 2)) {
           consensusCount = parseInt(mostCommonCount[0]);
 
-          // Calculate average totals for consensus models
-          const consensusModels = successfulResults.filter(r => r.transactionCount === consensusCount);
-          consensusOutflow = consensusModels.reduce((sum, r) => sum + r.totalOutflow, 0) / consensusModels.length;
-          consensusInflow = consensusModels.reduce((sum, r) => sum + r.totalInflow, 0) / consensusModels.length;
         }
       }
 
       // Mark models as outliers if they deviate too much from consensus
-      const finalResults = allPromiseResults.map(result => {
+      const finalResults = allResults.map(cloneResult);
+      finalResults.forEach(result => {
         if (consensusCount > 0 && !result.error) {
           const countDiff = Math.abs(result.transactionCount - consensusCount);
 
           // Only check for outliers based on transaction count difference
-          // Don't mark as outlier if the count is correct, even if amounts differ slightly
+          // Do not mark as outlier if the count is correct, even if amounts differ slightly
           if (countDiff > 2) {
             result.error = `Outlier: ${result.transactionCount} txns (consensus: ${consensusCount})`;
           }
         }
-        return result;
       });
 
       // Sort by processing time (only successful models)
@@ -271,6 +248,17 @@ export default function TestPage() {
         if (!a.error && b.error) return -1;
         return a.processingTime - b.processingTime;
       });
+
+      setModelStatuses(prev => prev.map(status => {
+        const match = sortedResults.find(r => r.model === status.model);
+        if (!match) {
+          return { ...status, status: 'failed' as const, error: 'No result returned' };
+        }
+        if (match.error) {
+          return { ...status, status: 'failed' as const, error: match.error };
+        }
+        return { ...status, status: 'completed' as const };
+      }));
 
       setResults(sortedResults);
 

@@ -67,7 +67,7 @@ Return a JSON array where each transaction has these fields:
 
 Rules:
 - Each transaction has EITHER outflow OR inflow, never both
-- If date has no year: months after ${currentMonth} are from ${currentYear - 1}, others are ${currentYear}
+- If the statement omits the year, assume the entire statement belongs to a single year. Use any printed statement year if present; otherwise keep the same inferred year for every row even when the month number wraps around.
 - Do NOT include reference numbers in memo
 
 Return ONLY the JSON array, no other text.`
@@ -134,7 +134,7 @@ Return ONLY the JSON array, no other text.`
     // Extract token usage and cost from response headers
     const usage = response.data.usage;
     let cost = 0;
-    let tokens = { prompt: 0, completion: 0 };
+    const tokens = { prompt: 0, completion: 0 };
 
     if (usage) {
       tokens.prompt = usage.prompt_tokens || 0;

@@ -44,11 +44,17 @@ export default function FileUploader({ onFileProcess, isLoading }: FileUploaderP
   const handleFiles = (files: File[]) => {
     // Append new files to existing ones instead of replacing
     setSelectedFiles(prev => {
-      // Create a Set of existing file names to avoid duplicates
-      const existingNames = new Set(prev.map(f => f.name));
-      // Filter out any files that are already selected
-      const newFiles = files.filter(f => !existingNames.has(f.name));
-      return [...prev, ...newFiles];
+      // De-dupe using name, size and lastModified so same-named statements in different months are still accepted
+      const existingKeys = new Set(prev.map(f => `${f.name}-${f.size}-${f.lastModified}`));
+      const nextFiles = files.filter(f => {
+        const key = `${f.name}-${f.size}-${f.lastModified}`;
+        if (existingKeys.has(key)) {
+          return false;
+        }
+        existingKeys.add(key);
+        return true;
+      });
+      return [...prev, ...nextFiles];
     });
   };
 

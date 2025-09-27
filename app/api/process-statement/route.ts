@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     try {
       let response;
-      let transactions = [];
+      let transactions: TransactionData[] = [];
 
       if (LLM_PROVIDER === 'lm-studio') {
         // LOCAL MODEL PATH - Two-step CSV approach
@@ -95,7 +95,7 @@ Today's date: ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(c
 Create CSV with headers: Date,Payee,Memo,Outflow,Inflow
 
 Rules:
-- Date: YYYY-MM-DD format. If no year shown: months after ${currentMonth} use ${currentYear - 1}, others use ${currentYear}
+- Date: YYYY-MM-DD format. If the statement omits the year entirely, infer a single consistent year for all rows based on any printed year (e.g. statement period). When no year is visible anywhere, keep the same year as the first transaction you extract and do not decrement the year when the month number decreases.
 - Payee: merchant/company name
 - Memo: Only foreign currency (e.g. "USD 50.00") or location if different from payee
 - Outflow: charges/debits as positive amount with $ (e.g. "$123.45")
@@ -186,7 +186,7 @@ Return a JSON array where each transaction has these fields:
 
 Rules:
 - Each transaction has EITHER outflow OR inflow, never both
-- If date has no year: months after ${currentMonth} are from ${currentYear - 1}, others are ${currentYear}
+- If the statement omits the year, assume the entire statement belongs to a single year. Use any printed statement year if present; otherwise keep the same inferred year for every row even when the month number wraps around.
 - Do NOT include reference numbers in memo
 
 Return ONLY the JSON array, no other text.`
@@ -245,7 +245,7 @@ Return a JSON array where each transaction has these fields:
 
 Rules:
 - Each transaction has EITHER outflow OR inflow, never both
-- If date has no year: months after ${currentMonth} are from ${currentYear - 1}, others are ${currentYear}
+- If the statement omits the year, assume the entire statement belongs to a single year. Use any printed statement year if present; otherwise keep the same inferred year for every row even when the month number wraps around.
 - Do NOT include reference numbers in memo
 
 Return ONLY the JSON array, no other text.`
@@ -277,27 +277,49 @@ Return ONLY the JSON array, no other text.`
 
       // Parse the response
       try {
-        let content = response.data.choices[0].message.content;
+        const rawContent = response?.data?.choices?.[0]?.message?.content;
+        if (typeof rawContent !== "string") {
+          console.error('Missing content in AI response:', response?.data);
+          return NextResponse.json(
+            { error: 'AI response did not contain text content' },
+            { status: 502 }
+          );
+        }
+
+        let content = rawContent;
         console.log('AI Response:', content.substring(0, 500));
 
         // Clean up common issues
         content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '');
 
         // Extract JSON array
+        let parsed: unknown;
         const jsonMatch = content.match(/\[[\s\S]*\]/);
         if (jsonMatch) {
-          transactions = JSON.parse(jsonMatch[0]);
+          parsed = JSON.parse(jsonMatch[0]);
         } else {
-          transactions = JSON.parse(content);
+          parsed = JSON.parse(content);
+        }
+
+        if (Array.isArray(parsed)) {
+          transactions = parsed as TransactionData[];
+        } else if (parsed && typeof parsed === "object" && Array.isArray((parsed as { transactions?: TransactionData[] }).transactions)) {
+          transactions = (parsed as { transactions: TransactionData[] }).transactions;
+        } else {
+          console.error('Unexpected AI response shape:', parsed);
+          return NextResponse.json(
+            { error: 'AI response did not include a transaction list' },
+            { status: 422 }
+          );
         }
 
         console.log(`Parsed ${transactions.length} transactions`);
       } catch (parseError) {
         console.error('Error parsing AI response:', parseError);
-        return NextResponse.json({
-          error: 'Could not parse AI response',
-          transactions: []
-        });
+        return NextResponse.json(
+          { error: 'Could not parse AI response' },
+          { status: 502 }
+        );
       }
 
       // Clean and validate transactions

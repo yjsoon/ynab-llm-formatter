@@ -77,11 +77,19 @@ export default function Home() {
       }
     }
 
-    // Sort all transactions by date in reverse order (newest first)
+    // Sort all transactions by date in reverse order (newest first). Unknown dates go last.
     const sortedTransactions = allTransactions.sort((a, b) => {
-      const dateA = new Date(a.date || '');
-      const dateB = new Date(b.date || '');
-      return dateB.getTime() - dateA.getTime();
+      const parse = (value?: string) => {
+        if (!value) return null;
+        const timestamp = Date.parse(value);
+        return Number.isNaN(timestamp) ? null : timestamp;
+      };
+      const timeA = parse(a.date);
+      const timeB = parse(b.date);
+      if (timeA === null && timeB === null) return 0;
+      if (timeA === null) return 1;
+      if (timeB === null) return -1;
+      return timeB - timeA;
     });
 
     setTransactions(sortedTransactions);
