@@ -174,25 +174,13 @@ Return ONLY the JSON array, no other text.`
         // LM Studio configuration (OpenAI-compatible API)
         console.log(`Calling LM Studio with model: ${LM_STUDIO_MODEL}`);
 
-        // For LM Studio, we need to use text-only prompts since Mini CPM might not support vision
-        // Convert image messages to text-only format if needed
-        const lmStudioMessages = messages.map(msg => {
-          if (msg.content && Array.isArray(msg.content)) {
-            // Extract text from multi-modal messages
-            const textContent = msg.content.find(item => item.type === 'text');
-            return {
-              ...msg,
-              content: textContent ? textContent.text : 'Please extract transactions from the document.'
-            };
-          }
-          return msg;
-        });
-
+        // LM Studio supports vision models with OpenAI format
+        // Keep the messages as-is for vision models like Qwen2.5-VL
         response = await axios.post(
           `${LM_STUDIO_URL}/chat/completions`,
           {
             model: LM_STUDIO_MODEL,
-            messages: lmStudioMessages,
+            messages: messages, // Send the full messages including images
             temperature: 0.1,
             max_tokens: 4000
           },
