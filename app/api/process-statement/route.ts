@@ -83,44 +83,32 @@ export async function POST(request: NextRequest) {
         },
         {
           role: 'user',
-          content: `Please extract all credit card transactions from this statement text and convert them to the following format:
+          content: `Extract all transactions from this credit card statement text.
 
-Required fields:
-- date: Transaction date in YYYY-MM-DD format (use TRANSACTION date, NOT posting date if both are present)
-- payee: The merchant or payee name
-- memo: ONLY include meaningful details like:
-  * Foreign currency amounts (e.g., "USD 50.00")
-  * Additional merchant details or location if different from payee
-  * Multi-line descriptions that add context
-  * DO NOT include: transaction IDs, reference numbers, or codes
-  * Leave empty if no meaningful additional information
-- outflow: Amount for charges/debits (positive number with $ sign, e.g., "$123.45")
-- inflow: Amount for credits/refunds/payments (positive number with $ sign, e.g., "$50.00")
+Today is ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}.
 
-Important rules:
-- Each transaction should have EITHER outflow OR inflow, not both
-- All amounts should be positive numbers with $ signs
-- Dates must be in YYYY-MM-DD format
-- IMPORTANT: Use the TRANSACTION DATE (when purchase was made), not the posting date (when it appeared on statement)
-- If you see two dates for an entry, the first/earlier one is usually the transaction date - use that one
-- For memo field: ONLY include useful context (foreign currency, location, additional description)
-- DO NOT put transaction IDs, reference numbers, or meaningless codes in memo
-- Extract ALL transactions you can find in the text
+Return a JSON array where each transaction has exactly these fields:
+- date: YYYY-MM-DD format (use transaction date, not posting date)
+- payee: merchant name
+- memo: foreign currency or location only (leave empty if none)
+- outflow: debit amount with $ (e.g. "$123.45") or empty string
+- inflow: credit amount with $ (e.g. "$50.00") or empty string
 
-CRITICAL DATE HANDLING:
-- Today's date is ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
-- If the statement shows dates without years, determine the year as follows:
-  * If the month is AFTER the current month (${currentMonth}), it's from LAST YEAR (${currentYear - 1})
-  * If the month is BEFORE or EQUAL to the current month, it's from THIS YEAR (${currentYear})
-  * Example: If today is January ${currentYear} and you see "December 15", that's ${currentYear - 1}-12-15
-  * Example: If today is March ${currentYear} and you see "January 10", that's ${currentYear}-01-10
-- If a statement shows only day/month without year, use the logic above
-- NEVER use years like 2023 or earlier unless explicitly shown in the statement
+Rules:
+- Each transaction has EITHER outflow OR inflow, never both
+- If date has no year: months after ${currentMonth} are year ${currentYear - 1}, others are ${currentYear}
+- Skip reference numbers in memo
+
+Example output:
+[
+  {"date": "2025-09-15", "payee": "Starbucks", "memo": "", "outflow": "$4.50", "inflow": ""},
+  {"date": "2025-09-14", "payee": "Amazon", "memo": "USD 25.00", "outflow": "$33.75", "inflow": ""}
+]
 
 Statement text:
 ${extractedText}
 
-Return ONLY a valid JSON array of transactions with these exact field names. No additional text or explanation.`
+Return ONLY the JSON array, no other text.`
         }
       ];
     } else {
@@ -144,39 +132,29 @@ Return ONLY a valid JSON array of transactions with these exact field names. No 
           content: [
             {
               type: 'text',
-              text: `Please extract all credit card transactions from this statement image and convert them to the following CSV format:
+              text: `Extract all transactions from this credit card statement image.
 
-Required fields:
-- date: Transaction date in YYYY-MM-DD format (use TRANSACTION date, NOT posting date if both are present)
-- payee: The merchant or payee name
-- memo: ONLY include meaningful details like:
-  * Foreign currency amounts (e.g., "USD 50.00")
-  * Additional merchant details or location if different from payee
-  * Multi-line descriptions that add context
-  * DO NOT include: transaction IDs, reference numbers, or codes
-  * Leave empty if no meaningful additional information
-- outflow: Amount for charges/debits (positive number with $ sign, e.g., "$123.45")
-- inflow: Amount for credits/refunds/payments (positive number with $ sign, e.g., "$50.00")
+Today is ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}.
 
-Important rules:
-- Each transaction should have EITHER outflow OR inflow, not both
-- All amounts should be positive numbers with $ signs
-- Dates must be in YYYY-MM-DD format
-- IMPORTANT: Use the TRANSACTION DATE (when purchase was made), not the posting date (when it appeared on statement)
-- If you see two dates for an entry, the first/earlier one is usually the transaction date - use that one
-- Include foreign currency amounts in the memo field if present
+Return a JSON array where each transaction has exactly these fields:
+- date: YYYY-MM-DD format (use transaction date, not posting date)
+- payee: merchant name
+- memo: foreign currency or location only (leave empty if none)
+- outflow: debit amount with $ (e.g. "$123.45") or empty string
+- inflow: credit amount with $ (e.g. "$50.00") or empty string
 
-CRITICAL DATE HANDLING:
-- Today's date is ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
-- If the statement shows dates without years, determine the year as follows:
-  * If the month is AFTER the current month (${currentMonth}), it's from LAST YEAR (${currentYear - 1})
-  * If the month is BEFORE or EQUAL to the current month, it's from THIS YEAR (${currentYear})
-  * Example: If today is January ${currentYear} and you see "December 15", that's ${currentYear - 1}-12-15
-  * Example: If today is March ${currentYear} and you see "January 10", that's ${currentYear}-01-10
-- If a statement shows only day/month without year, use the logic above
-- NEVER use years like 2023 or earlier unless explicitly shown in the statement
+Rules:
+- Each transaction has EITHER outflow OR inflow, never both
+- If date has no year: months after ${currentMonth} are year ${currentYear - 1}, others are ${currentYear}
+- Skip reference numbers in memo
 
-Return ONLY a valid JSON array of transactions with these exact field names. No additional text or explanation.`
+Example output:
+[
+  {"date": "2025-09-15", "payee": "Starbucks", "memo": "", "outflow": "$4.50", "inflow": ""},
+  {"date": "2025-09-14", "payee": "Amazon", "memo": "USD 25.00", "outflow": "$33.75", "inflow": ""}
+]
+
+Return ONLY the JSON array, no other text.`
             },
             {
               type: 'image_url',
