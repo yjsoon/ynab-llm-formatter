@@ -4,6 +4,8 @@ import axios from 'axios';
 // LLM Configuration
 const LLM_PROVIDER = process.env.LLM_PROVIDER || 'z.ai';
 const Z_AI_API_KEY = process.env.Z_AI_API_KEY;
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'google/gemini-flash-1.5-8b';
 const LM_STUDIO_URL = process.env.LM_STUDIO_URL || 'http://localhost:1234/v1';
 const LM_STUDIO_MODEL = process.env.LM_STUDIO_MODEL || 'qwen2.5-vl-7b-instruct';
 
@@ -45,6 +47,14 @@ export async function POST(request: NextRequest) {
       console.error('Z_AI_API_KEY not configured');
       return NextResponse.json(
         { error: 'Z.AI API key not configured' },
+        { status: 500 }
+      );
+    }
+
+    if (LLM_PROVIDER === 'openrouter' && !OPENROUTER_API_KEY) {
+      console.error('OPENROUTER_API_KEY not configured');
+      return NextResponse.json(
+        { error: 'OpenRouter API key not configured' },
         { status: 500 }
       );
     }
@@ -146,6 +156,64 @@ Output only the JSON array starting with [ and ending with ]`
         response = jsonResponse;
         console.log('Step 2 - Converted to JSON');
 
+      } else if (LLM_PROVIDER === 'openrouter') {
+        // OPENROUTER PATH - Direct JSON extraction
+        console.log(`Calling OpenRouter API with model: ${OPENROUTER_MODEL}`);
+
+        const messages = [
+          {
+            role: 'system',
+            content: 'You are a financial data extraction assistant. Extract credit card transactions and return them in JSON format.'
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Extract all credit card transactions from this statement image.
+
+Today's date: ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
+
+Return a JSON array where each transaction has these fields:
+- date: YYYY-MM-DD format (use transaction date, not posting date)
+- payee: merchant name
+- memo: foreign currency (e.g. "USD 50.00") or location only, leave empty if none
+- outflow: debit amount with $ (e.g. "$123.45") or empty string ""
+- inflow: credit amount with $ (e.g. "$50.00") or empty string ""
+
+Rules:
+- Each transaction has EITHER outflow OR inflow, never both
+- If date has no year: months after ${currentMonth} are from ${currentYear - 1}, others are ${currentYear}
+- Do NOT include reference numbers in memo
+
+Return ONLY the JSON array, no other text.`
+              },
+              {
+                type: 'image_url',
+                image_url: { url: imageData }
+              }
+            ]
+          }
+        ];
+
+        response = await axios.post(
+          'https://openrouter.ai/api/v1/chat/completions',
+          {
+            model: OPENROUTER_MODEL,
+            messages,
+            temperature: 0.1,
+            max_tokens: 4000
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+              'Content-Type': 'application/json',
+              'HTTP-Referer': 'http://localhost:3000',
+              'X-Title': 'YNAB Statement Formatter'
+            }
+          }
+        );
+
       } else {
         // Z.AI PATH - Direct JSON extraction
         const model = 'glm-4.5v';
@@ -241,8 +309,15 @@ Return ONLY the JSON array, no other text.`
       return NextResponse.json({ transactions: cleanedTransactions });
 
     } catch (apiError) {
-      const error = apiError as any;
-      const provider = LLM_PROVIDER === 'lm-studio' ? 'LM Studio' : 'z.ai';
+      const error = apiError as Error & {
+        code?: string;
+        response?: {
+          data?: unknown;
+          status?: number;
+        };
+      };
+      const provider = LLM_PROVIDER === 'lm-studio' ? 'LM Studio' :
+                      LLM_PROVIDER === 'openrouter' ? 'OpenRouter' : 'z.ai';
       console.error(`${provider} API error:`, error.response?.data || error.message);
 
       if (error.code === 'ECONNREFUSED' && LLM_PROVIDER === 'lm-studio') {

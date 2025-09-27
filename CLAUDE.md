@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Next.js application that converts credit card statement images to YNAB-compatible CSV format using AI-powered extraction via the z.ai API.
+A Next.js application that converts credit card statement images to YNAB-compatible CSV format using AI-powered extraction via z.ai, OpenRouter, or local LM Studio.
 
 ## Commands
 
@@ -24,7 +24,10 @@ npm run lint          # Run ESLint
 
 1. **API Route Processing** (`app/api/process-statement/route.ts`)
    - Accepts image files (PNG/JPG) via multipart form upload
-   - Uses z.ai API with `glm-4.5v` vision model for image processing
+   - Supports multiple LLM providers:
+     - z.ai API with `glm-4.5v` vision model
+     - OpenRouter with various vision-enabled models
+     - LM Studio for local model inference
    - Returns transactions in YNAB format (date, payee, memo, outflow, inflow)
 
 2. **Frontend Flow**
@@ -43,7 +46,7 @@ Transactions follow YNAB CSV structure:
 
 ### Environment Configuration
 
-The application supports two LLM providers:
+The application supports three LLM providers:
 
 #### Option 1: Z.AI (Cloud-based)
 ```
@@ -51,7 +54,21 @@ LLM_PROVIDER=z.ai
 Z_AI_API_KEY=<your_api_key>
 ```
 
-#### Option 2: LM Studio (Local)
+#### Option 2: OpenRouter (Cloud-based, Many Models)
+```
+LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=<your_api_key>
+OPENROUTER_MODEL=google/gemini-flash-1.5-8b  # or other vision models
+```
+
+**Recommended OpenRouter Models for Vision Tasks:**
+- `google/gemini-flash-1.5-8b` - $0.075/1M tokens (input), very fast, great value
+- `google/gemini-flash-1.5` - $0.075/1M tokens (input), fast
+- `deepseek/deepseek-chat` - $0.14/1M tokens (input), good quality
+- `anthropic/claude-3.5-haiku` - $1.00/1M tokens (input), premium quality
+- `openai/gpt-4o-mini` - $0.15/1M tokens (input), reliable
+
+#### Option 3: LM Studio (Local)
 ```
 LLM_PROVIDER=lm-studio
 LM_STUDIO_URL=http://localhost:1234/v1
