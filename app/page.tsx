@@ -8,16 +8,16 @@ import { Transaction } from '@/types/transaction';
 
 // Top performing models from testing
 const OPENROUTER_MODELS = [
-  { id: 'google/gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', speed: '3.95s', free: true },
-  { id: 'mistralai/pixtral-12b', name: 'Pixtral 12B', speed: '5.64s', free: true },
-  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku', speed: '6.80s', free: true },
-  { id: 'bytedance/ui-tars-1.5-7b', name: 'UI-TARS 1.5 7B', speed: '12.26s', free: true },
-  { id: 'meta-llama/llama-4-scout:free', name: 'Llama 4 Scout', speed: '12.52s', free: true },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', speed: '15.38s', free: true },
-  { id: 'qwen/qwen-2.5-vl-7b-instruct', name: 'Qwen 2.5 VL 7B', speed: '15.57s', free: true },
-  { id: 'meta-llama/llama-3.2-11b-vision-instruct', name: 'Llama 3.2 11B Vision', speed: '18.69s', free: true },
-  { id: 'google/gemma-3-27b-it:free', name: 'Gemma 3 27B', speed: '19.45s', free: true },
-  { id: 'qwen/qwen2.5-vl-32b-instruct:free', name: 'Qwen 2.5 VL 32B', speed: '20.13s', free: true },
+  { id: 'google/gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', speed: '3.95s', free: false },
+  { id: 'mistralai/pixtral-12b', name: 'Pixtral 12B', speed: '5.64s', free: false },
+  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku', speed: '6.80s', free: false },
+  { id: 'bytedance/ui-tars-1.5-7b', name: 'UI-TARS 1.5 7B', speed: '12.26s', free: false },
+  { id: 'meta-llama/llama-4-scout:free', name: 'Llama 4 Scout (FREE)', speed: '12.52s', free: true },
+  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', speed: '15.38s', free: false },
+  { id: 'qwen/qwen-2.5-vl-7b-instruct', name: 'Qwen 2.5 VL 7B', speed: '15.57s', free: false },
+  { id: 'meta-llama/llama-3.2-11b-vision-instruct', name: 'Llama 3.2 11B Vision', speed: '18.69s', free: false },
+  { id: 'google/gemma-3-27b-it:free', name: 'Gemma 3 27B (FREE)', speed: '19.45s', free: true },
+  { id: 'qwen/qwen2.5-vl-32b-instruct:free', name: 'Qwen 2.5 VL 32B (FREE)', speed: '20.13s', free: true },
 ];
 
 export default function Home() {
@@ -130,12 +130,12 @@ export default function Home() {
             >
               {OPENROUTER_MODELS.map((model) => (
                 <option key={model.id} value={model.id}>
-                  {model.name} - {model.speed} {model.free && '(FREE)'}
+                  {model.name} - {model.speed}
                 </option>
               ))}
             </select>
             <p className="mt-2 text-sm text-gray-500">
-              All models are currently FREE. Faster models provide quicker results.
+              Models marked with (FREE) have no usage costs. Faster models provide quicker results.
             </p>
           </div>
 
