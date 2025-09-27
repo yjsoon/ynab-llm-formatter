@@ -254,14 +254,11 @@ export default function TestPage() {
       // Mark models as outliers if they deviate too much from consensus
       const finalResults = allPromiseResults.map(result => {
         if (consensusCount > 0 && !result.error) {
-          // Only mark as outlier if it actually deviates from consensus
           const countDiff = Math.abs(result.transactionCount - consensusCount);
-          const outflowDiff = consensusOutflow > 0 ? Math.abs(result.totalOutflow - consensusOutflow) / consensusOutflow : 0;
-          const inflowDiff = consensusInflow > 0 ? Math.abs(result.totalInflow - consensusInflow) / consensusInflow : 0;
 
-          const isOutlier = countDiff > 2 || outflowDiff > 0.2 || inflowDiff > 0.2;
-
-          if (isOutlier) {
+          // Only check for outliers based on transaction count difference
+          // Don't mark as outlier if the count is correct, even if amounts differ slightly
+          if (countDiff > 2) {
             result.error = `Outlier: ${result.transactionCount} txns (consensus: ${consensusCount})`;
           }
         }
