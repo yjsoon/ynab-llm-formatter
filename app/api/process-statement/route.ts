@@ -83,7 +83,12 @@ export async function POST(request: NextRequest) {
 Required fields:
 - date: Transaction date in YYYY-MM-DD format
 - payee: The merchant or payee name
-- memo: Any additional transaction details (foreign currency, reference numbers, etc.)
+- memo: ONLY include meaningful details like:
+  * Foreign currency amounts (e.g., "USD 50.00")
+  * Additional merchant details or location if different from payee
+  * Multi-line descriptions that add context
+  * DO NOT include: transaction IDs, reference numbers, or codes
+  * Leave empty if no meaningful additional information
 - outflow: Amount for charges/debits (positive number with $ sign, e.g., "$123.45")
 - inflow: Amount for credits/refunds/payments (positive number with $ sign, e.g., "$50.00")
 
@@ -91,7 +96,8 @@ Important rules:
 - Each transaction should have EITHER outflow OR inflow, not both
 - All amounts should be positive numbers with $ signs
 - Dates must be in YYYY-MM-DD format
-- Include foreign currency amounts in the memo field if present
+- For memo field: ONLY include useful context (foreign currency, location, additional description)
+- DO NOT put transaction IDs, reference numbers, or meaningless codes in memo
 - Extract ALL transactions you can find in the text
 
 CRITICAL DATE HANDLING:
@@ -136,7 +142,12 @@ Return ONLY a valid JSON array of transactions with these exact field names. No 
 Required fields:
 - date: Transaction date in YYYY-MM-DD format
 - payee: The merchant or payee name
-- memo: Any additional transaction details (foreign currency, reference numbers, etc.)
+- memo: ONLY include meaningful details like:
+  * Foreign currency amounts (e.g., "USD 50.00")
+  * Additional merchant details or location if different from payee
+  * Multi-line descriptions that add context
+  * DO NOT include: transaction IDs, reference numbers, or codes
+  * Leave empty if no meaningful additional information
 - outflow: Amount for charges/debits (positive number with $ sign, e.g., "$123.45")
 - inflow: Amount for credits/refunds/payments (positive number with $ sign, e.g., "$50.00")
 
