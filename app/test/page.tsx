@@ -64,6 +64,11 @@ interface ModelResult {
   transactionCount: number;
   totalOutflow: number;
   totalInflow: number;
+  cost?: number;
+  tokens?: {
+    prompt: number;
+    completion: number;
+  };
 }
 
 interface TestSummary {
@@ -93,6 +98,7 @@ export default function TestPage() {
   const [summary, setSummary] = useState<TestSummary | null>(null);
   const [modelStatuses, setModelStatuses] = useState<ModelStatus[]>([]);
   const [currentTime, setCurrentTime] = useState(0);
+  const [sortBy, setSortBy] = useState<'time' | 'cost'>('time');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -569,8 +575,30 @@ export default function TestPage() {
 
             {results.length > 0 && (
               <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="p-6">
-                  <h2 className="text-lg font-semibold mb-4">Model Results</h2>
+                <div className="p-6 flex justify-between items-center">
+                  <h2 className="text-lg font-semibold">Model Results</h2>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSortBy('time')}
+                      className={`px-3 py-1 rounded text-sm font-medium ${
+                        sortBy === 'time'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Sort by Time
+                    </button>
+                    <button
+                      onClick={() => setSortBy('cost')}
+                      className={`px-3 py-1 rounded text-sm font-medium ${
+                        sortBy === 'cost'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Sort by Cost
+                    </button>
+                  </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -579,6 +607,7 @@ export default function TestPage() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
                         <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
                         <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Txns</th>
                         <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Outflow</th>
                         <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Inflow</th>
@@ -586,9 +615,23 @@ export default function TestPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {results.map((result, idx) => {
+                      {[...results].sort((a, b) => {
+                        // Put errors last
+                        if (a.error && !b.error) return 1;
+                        if (!a.error && b.error) return -1;
+                        if (a.error && b.error) return 0;
+
+                        // Sort by selected criteria
+                        if (sortBy === 'cost') {
+                          const aCost = a.cost || 0;
+                          const bCost = b.cost || 0;
+                          return aCost - bCost;
+                        } else {
+                          return a.processingTime - b.processingTime;
+                        }
+                      }).map((result, idx, sortedResults) => {
                         const isWinner = idx === 0 && !result.error;
-                        const rank = result.error ? '-' : (results.filter((r, i) => i < idx && !r.error).length + 1);
+                        const rank = result.error ? '-' : (sortedResults.filter((r, i) => i < idx && !r.error).length + 1);
 
                         return (
                           <tr key={result.model} className={isWinner ? 'bg-green-50' : result.error ? 'bg-red-50' : ''}>
@@ -607,6 +650,11 @@ export default function TestPage() {
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               <span className={`text-sm font-medium ${isWinner ? 'text-green-600' : 'text-gray-900'}`}>
                                 {result.error ? '-' : formatTime(result.processingTime)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                              <span className="text-sm">
+                                {result.error ? '-' : result.cost ? `$${result.cost.toFixed(4)}` : 'FREE'}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center text-sm">

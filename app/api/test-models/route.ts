@@ -25,6 +25,11 @@ interface ModelResult {
   transactionCount: number;
   totalOutflow: number;
   totalInflow: number;
+  cost?: number;
+  tokens?: {
+    prompt: number;
+    completion: number;
+  };
 }
 
 async function processWithModel(
@@ -126,13 +131,27 @@ Return ONLY the JSON array, no other text.`
 
     const processingTime = Date.now() - startTime;
 
+    // Extract token usage and cost from response headers
+    const usage = response.data.usage;
+    let cost = 0;
+    let tokens = { prompt: 0, completion: 0 };
+
+    if (usage) {
+      tokens.prompt = usage.prompt_tokens || 0;
+      tokens.completion = usage.completion_tokens || 0;
+      // OpenRouter provides total cost in the response
+      cost = usage.total_cost || 0;
+    }
+
     return {
       model,
       transactions,
       processingTime,
       transactionCount: transactions.length,
       totalOutflow: Math.round(totalOutflow * 100) / 100,
-      totalInflow: Math.round(totalInflow * 100) / 100
+      totalInflow: Math.round(totalInflow * 100) / 100,
+      cost,
+      tokens
     };
 
   } catch (error) {
@@ -147,7 +166,8 @@ Return ONLY the JSON array, no other text.`
       error: err.response?.data?.error?.message || err.message,
       transactionCount: 0,
       totalOutflow: 0,
-      totalInflow: 0
+      totalInflow: 0,
+      cost: 0
     };
   }
 }
