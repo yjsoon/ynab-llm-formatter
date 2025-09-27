@@ -18,9 +18,16 @@ export default function TransactionTable({ transactions }: TransactionTableProps
   };
 
   const handleDownloadCSV = () => {
-    const csv = Papa.unparse(editedTransactions, {
-      columns: ['date', 'payee', 'memo', 'outflow', 'inflow'],
-      header: true
+    // Use Papa.unparse with custom headers for proper CSV generation
+    const csv = Papa.unparse({
+      fields: ['Date', 'Payee', 'Memo', 'Outflow', 'Inflow'],
+      data: editedTransactions.map(t => ({
+        'Date': t.date || '',
+        'Payee': t.payee || '',
+        'Memo': t.memo || '',
+        'Outflow': t.outflow || '',
+        'Inflow': t.inflow || ''
+      }))
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -33,6 +40,9 @@ export default function TransactionTable({ transactions }: TransactionTableProps
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    // Clean up the object URL
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -62,19 +72,19 @@ export default function TransactionTable({ transactions }: TransactionTableProps
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-800 uppercase tracking-wider">
+                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider w-24">
                   Date
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-800 uppercase tracking-wider">
+                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider w-2/5">
                   Payee
                 </th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-800 uppercase tracking-wider">
+                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">
                   Memo
                 </th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-800 uppercase tracking-wider">
+                <th className="px-3 py-2 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider w-28">
                   Outflow
                 </th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-800 uppercase tracking-wider">
+                <th className="px-3 py-2 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider w-28">
                   Inflow
                 </th>
               </tr>
@@ -82,44 +92,44 @@ export default function TransactionTable({ transactions }: TransactionTableProps
             <tbody className="divide-y divide-slate-200">
               {editedTransactions.map((transaction, index) => (
                 <tr key={index} className="hover:bg-slate-50">
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2 w-24">
                     <input
                       type="text"
                       value={transaction.date}
                       onChange={(e) => handleEdit(index, 'date', e.target.value)}
-                      className="w-full px-2 py-1 text-base text-slate-900 font-medium border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
+                      className="w-full px-2 py-1 text-sm text-slate-800 border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
                     />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2 w-2/5">
                     <input
                       type="text"
                       value={transaction.payee}
                       onChange={(e) => handleEdit(index, 'payee', e.target.value)}
-                      className="w-full px-2 py-1 text-base text-slate-900 font-medium border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
+                      className="w-full px-2 py-1 text-sm text-slate-800 border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
                     />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2">
                     <input
                       type="text"
                       value={transaction.memo}
                       onChange={(e) => handleEdit(index, 'memo', e.target.value)}
-                      className="w-full px-2 py-1 text-base text-slate-900 font-medium border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
+                      className="w-full px-2 py-1 text-sm text-slate-800 border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
                     />
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-3 py-2 text-right w-28">
                     <input
                       type="text"
                       value={transaction.outflow}
                       onChange={(e) => handleEdit(index, 'outflow', e.target.value)}
-                      className="w-full px-2 py-1 text-base font-medium text-right border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded text-red-700"
+                      className="w-full px-2 py-1 text-sm font-mono text-right border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded text-red-600"
                     />
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-3 py-2 text-right w-28">
                     <input
                       type="text"
                       value={transaction.inflow}
                       onChange={(e) => handleEdit(index, 'inflow', e.target.value)}
-                      className="w-full px-2 py-1 text-base font-medium text-right border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded text-green-700"
+                      className="w-full px-2 py-1 text-sm font-mono text-right border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded text-green-600"
                     />
                   </td>
                 </tr>
