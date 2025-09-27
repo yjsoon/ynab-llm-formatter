@@ -174,15 +174,36 @@ Return ONLY the JSON array, no other text.`
         // LM Studio configuration (OpenAI-compatible API)
         console.log(`Calling LM Studio with model: ${LM_STUDIO_MODEL}`);
 
-        // LM Studio supports vision models with OpenAI format
-        // Keep the messages as-is for vision models like Qwen2.5-VL
+        // Optimize prompts for local models like Qwen
+        const optimizedMessages = messages.map(msg => {
+          if (msg.role === 'system') {
+            // Stronger system prompt for local models
+            return {
+              ...msg,
+              content: 'You are a JSON extraction tool. Extract transaction data and output ONLY valid JSON. No explanations, no markdown, just JSON array.'
+            };
+          }
+          if (msg.role === 'user' && typeof msg.content === 'string') {
+            // Simplify for text-based PDFs
+            return {
+              ...msg,
+              content: msg.content.replace('Return ONLY the JSON array, no other text.',
+                'Output format: JSON array only.\nStart your response with [ and end with ]')
+            };
+          }
+          return msg;
+        });
+
         response = await axios.post(
           `${LM_STUDIO_URL}/chat/completions`,
           {
             model: LM_STUDIO_MODEL,
-            messages: messages, // Send the full messages including images
-            temperature: 0.1,
-            max_tokens: 4000
+            messages: optimizedMessages,
+            temperature: 0.0, // More deterministic for local models
+            max_tokens: 4000,
+            top_p: 0.1, // Reduce randomness
+            frequency_penalty: 0,
+            presence_penalty: 0
           },
           {
             headers: {
@@ -214,8 +235,24 @@ Return ONLY the JSON array, no other text.`
       // Parse the response
       let transactions = [];
       try {
-        const content = response.data.choices[0].message.content;
+        let content = response.data.choices[0].message.content;
         console.log('AI Response:', content);
+
+        // Clean up response for local models (they might add extra text)
+        if (LLM_PROVIDER === 'lm-studio') {
+          // Remove markdown code blocks if present
+          content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+          // Remove any text before the first [
+          const startIdx = content.indexOf('[');
+          if (startIdx > 0) {
+            content = content.substring(startIdx);
+          }
+          // Remove any text after the last ]
+          const endIdx = content.lastIndexOf(']');
+          if (endIdx > -1 && endIdx < content.length - 1) {
+            content = content.substring(0, endIdx + 1);
+          }
+        }
 
         // Try to extract JSON from the response
         const jsonMatch = content.match(/\[[\s\S]*\]/);
