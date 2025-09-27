@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const selectedModel = formData.get('model') as string;
+    const customPrompt = formData.get('customPrompt') as string | null;
 
     if (!file) {
       return NextResponse.json(
@@ -107,6 +108,9 @@ Rules:
 - Inflow: credits/payments as positive amount with $ (e.g. "$50.00")
 - Each row has EITHER Outflow OR Inflow, not both
 - Extract EVERY transaction visible
+${customPrompt ? `
+Additional instructions from user:
+${customPrompt}` : ''}
 
 Output the CSV starting with the header line.`
               },
@@ -197,6 +201,9 @@ Rules:
 - Each transaction has EITHER outflow OR inflow, never both
 - If the statement omits the year, assume the entire statement belongs to a single year. Use any printed statement year if present; otherwise keep the same inferred year for every row even when the month number wraps around.
 - Do NOT include reference numbers in memo
+${customPrompt ? `
+Additional instructions from user:
+${customPrompt}` : ''}
 
 Return ONLY the JSON array, no other text.`
               },
@@ -260,6 +267,9 @@ Rules:
 - Each transaction has EITHER outflow OR inflow, never both
 - If the statement omits the year, assume the entire statement belongs to a single year. Use any printed statement year if present; otherwise keep the same inferred year for every row even when the month number wraps around.
 - Do NOT include reference numbers in memo
+${customPrompt ? `
+Additional instructions from user:
+${customPrompt}` : ''}
 
 Return ONLY the JSON array, no other text.`
               },

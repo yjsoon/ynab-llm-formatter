@@ -5,9 +5,10 @@ import { useRef, useState } from 'react';
 interface FileUploaderProps {
   onFileProcess: (files: File[]) => void;
   isLoading: boolean;
+  customPrompt?: string;
 }
 
-export default function FileUploader({ onFileProcess, isLoading }: FileUploaderProps) {
+export default function FileUploader({ onFileProcess, isLoading, customPrompt }: FileUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -98,9 +99,9 @@ export default function FileUploader({ onFileProcess, isLoading }: FileUploaderP
           multiple
         />
 
-        <div className="flex flex-col items-center justify-center p-12">
+        <div className="flex flex-col items-center justify-center p-8">
           <svg
-            className="w-16 h-16 mb-4 text-slate-400"
+            className="w-12 h-12 mb-3 text-slate-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -124,7 +125,7 @@ export default function FileUploader({ onFileProcess, isLoading }: FileUploaderP
             </div>
           ) : (
             <>
-              <p className="text-lg font-medium text-slate-700 mb-2">
+              <p className="text-base font-medium text-slate-700 mb-2">
                 Drop your statements here
               </p>
               <p className="text-sm text-slate-500 mb-4">
@@ -147,65 +148,72 @@ export default function FileUploader({ onFileProcess, isLoading }: FileUploaderP
 
       {selectedFiles.length > 0 && (
         <div className="mt-4">
-          <div className="mb-4 p-4 bg-slate-50 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
+          {/* Files Section */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-slate-700">Selected Files: {selectedFiles.length}</h3>
               <div className="flex gap-2">
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-3 py-1 text-sm bg-white text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors"
+                  className="px-3 py-1 text-xs bg-white text-blue-600 border border-blue-600 rounded hover:bg-blue-50 transition-colors"
                   type="button"
                 >
-                  + Add More Files
+                  + Add More
                 </button>
                 <button
                   onClick={clearAllFiles}
-                  className="px-3 py-1 text-sm bg-white text-red-600 border border-red-600 rounded hover:bg-red-50 transition-colors"
+                  className="px-3 py-1 text-xs bg-white text-red-600 border border-red-600 rounded hover:bg-red-50 transition-colors"
                   type="button"
                 >
                   Clear All
                 </button>
               </div>
             </div>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
+            {/* Grid Layout for Files */}
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
               {selectedFiles.map((file, index) => (
-                <div key={`${file.name}-${index}`} className="flex items-center justify-between p-2 bg-white rounded border border-slate-200">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-slate-700">{file.name}</p>
-                    <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                  </div>
+                <div key={`${file.name}-${index}`} className="relative p-2 bg-white rounded border border-slate-200 group hover:border-slate-300">
                   <button
                     onClick={() => removeFile(index)}
-                    className="ml-2 text-red-600 hover:text-red-700"
+                    className="absolute top-1 right-1 p-1 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity"
                     type="button"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
+                  <p className="text-xs font-medium text-slate-700 truncate pr-4" title={file.name}>
+                    {file.name}
+                  </p>
+                  <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                 </div>
               ))}
             </div>
           </div>
-          <div className="flex justify-center">
-            <button
-              onClick={handleProcess}
-              disabled={isLoading}
-              className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isLoading ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Processing {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''}...
-                </span>
-              ) : (
-                `Process ${selectedFiles.length} Statement${selectedFiles.length > 1 ? 's' : ''}`
-              )}
-            </button>
-          </div>
+
+          {/* Process Button - Full Width */}
+          <button
+            onClick={handleProcess}
+            disabled={isLoading}
+            className="w-full px-6 py-4 bg-blue-600 text-white font-semibold text-lg rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02] shadow-lg"
+          >
+            {isLoading ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-3 h-6 w-6 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Processing {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''}...
+              </span>
+            ) : (
+              <span className="flex items-center justify-center">
+                <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Process {selectedFiles.length} Statement{selectedFiles.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </button>
         </div>
       )}
     </div>

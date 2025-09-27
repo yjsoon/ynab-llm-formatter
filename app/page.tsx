@@ -27,6 +27,7 @@ export default function Home() {
   const [warning, setWarning] = useState<string | null>(null);
   const [processingProgress, setProcessingProgress] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<string>('google/gemini-2.5-flash-lite');
+  const [customPrompt, setCustomPrompt] = useState<string>('');
 
   // Load saved model preference from localStorage
   useEffect(() => {
@@ -58,6 +59,9 @@ export default function Home() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('model', selectedModel);
+      if (customPrompt) {
+        formData.append('customPrompt', customPrompt);
+      }
 
       try {
         const response = await fetch('/api/process-statement', {
@@ -102,8 +106,8 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Settings/Test Link */}
-      <div className="absolute top-4 right-4">
+      {/* Top Right Controls */}
+      <div className="absolute top-4 right-4 flex flex-col gap-3">
         <Link
           href="/test"
           className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow hover:shadow-md transition-shadow text-gray-700 hover:text-gray-900"
@@ -115,10 +119,27 @@ export default function Home() {
           </svg>
           <span className="text-sm font-medium">Test Models</span>
         </Link>
+        {/* Model Selection Dropdown */}
+        <div className="bg-white rounded-lg shadow p-3 min-w-[250px]">
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            AI Model
+          </label>
+          <select
+            value={selectedModel}
+            onChange={(e) => handleModelChange(e.target.value)}
+            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+          >
+            {OPENROUTER_MODELS.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <h1 className="text-4xl font-bold text-slate-800 mb-2 text-center">
             Credit Card Statement Converter
           </h1>
@@ -126,28 +147,40 @@ export default function Home() {
             Upload multiple statements and convert them to YNAB-compatible CSV format
           </p>
 
-          {/* Model Selection Dropdown */}
-          <div className="mb-6 bg-white rounded-xl shadow-md p-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              AI Model Selection
-            </label>
-            <select
-              value={selectedModel}
-              onChange={(e) => handleModelChange(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              {OPENROUTER_MODELS.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name} - {model.speed}
-                </option>
-              ))}
-            </select>
-            <p className="mt-2 text-sm text-gray-500">
-              Models marked with (FREE) have no usage costs. Faster models provide quicker results.
-            </p>
-          </div>
+          {/* Main Processing Area */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Left: File Upload */}
+            <div>
+              <FileUploader
+                onFileProcess={handleFileProcess}
+                isLoading={isLoading}
+                customPrompt={customPrompt}
+              />
+            </div>
 
-          <FileUploader onFileProcess={handleFileProcess} isLoading={isLoading} />
+            {/* Right: Custom Prompt */}
+            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 h-fit">
+              <h3 className="text-lg font-semibold text-slate-800 mb-3">Custom Instructions</h3>
+              <p className="text-sm text-slate-600 mb-3">
+                Add specific instructions to help the AI better extract your transactions
+              </p>
+              <textarea
+                value={customPrompt}
+                onChange={(e) => setCustomPrompt(e.target.value)}
+                placeholder="E.g., This bank uses DD/MM format. Foreign transactions show original currency in brackets. Ignore fee reversals."
+                className="w-full px-3 py-2 text-sm text-slate-700 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none placeholder:text-slate-400"
+                rows={6}
+              />
+              <div className="mt-2 text-xs text-slate-500">
+                Examples:
+                <ul className="mt-1 space-y-1">
+                  <li>• "Dates are in DD/MM/YYYY format"</li>
+                  <li>• "Ignore transactions marked as 'REVERSAL'"</li>
+                  <li>• "Foreign amounts shown as (USD 50.00)"</li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           {processingProgress && (
             <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
