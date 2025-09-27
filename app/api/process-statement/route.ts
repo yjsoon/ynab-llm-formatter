@@ -132,7 +132,22 @@ Return ONLY the JSON array, no other text.`
           content: [
             {
               type: 'text',
-              text: `Extract all transactions from this credit card statement image.
+              text: LLM_PROVIDER === 'lm-studio'
+                ? `Look at this credit card statement image carefully.
+
+Extract EVERY transaction you can see into this exact JSON format:
+{"date": "YYYY-MM-DD", "payee": "name", "memo": "", "outflow": "$X.XX", "inflow": ""}
+
+Important:
+- Today is ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
+- Convert ALL dates to YYYY-MM-DD
+- For dates without year: if month > ${currentMonth}, use ${currentYear - 1}, else use ${currentYear}
+- Extract EVERY SINGLE transaction visible
+- Do NOT include any example data
+- Output ONLY a JSON array starting with [ and ending with ]
+
+Begin extracting now:`
+                : `Extract all transactions from this credit card statement image.
 
 Today is ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}.
 
