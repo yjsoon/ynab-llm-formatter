@@ -189,6 +189,11 @@ Return ONLY the JSON array, no other text.`
         // LM Studio configuration - Two-step approach for better accuracy
         console.log(`Calling LM Studio with model: ${LM_STUDIO_MODEL} (Two-step extraction)`);
 
+        // Get current date for year inference (same as above)
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth() + 1; // 0-indexed
+
         // Step 1: Extract to CSV format (simpler for local models)
         const csvExtractionMessages = [
           {
