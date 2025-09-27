@@ -66,6 +66,10 @@ Return a JSON array where each transaction has these fields:
 - inflow: credit amount with $ (e.g. "$50.00") or empty string ""
 
 Rules:
+- Date format: Intelligently parse dates which may be in DD/MM/YYYY, MM/DD/YYYY or other formats
+- For ambiguous dates (e.g., 04/06 could be April 6 or June 4):
+  * Prefer DD/MM interpretation when both are valid
+  * Choose the date closest to ${currentMonth}/${currentYear}
 - Each transaction has EITHER outflow OR inflow, never both
 - If the statement omits the year, assume the entire statement belongs to a single year. Use any printed statement year if present; otherwise keep the same inferred year for every row even when the month number wraps around.
 - Do NOT include reference numbers in memo

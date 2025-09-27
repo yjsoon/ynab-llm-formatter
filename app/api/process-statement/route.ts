@@ -95,7 +95,12 @@ Today's date: ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(c
 Create CSV with headers: Date,Payee,Memo,Outflow,Inflow
 
 Rules:
-- Date: YYYY-MM-DD format. If the statement omits the year entirely, infer a single consistent year for all rows based on any printed year (e.g. statement period). When no year is visible anywhere, keep the same year as the first transaction you extract and do not decrement the year when the month number decreases.
+- Date: Statements may use DD/MM/YYYY, MM/DD/YYYY, or other formats - intelligently parse to YYYY-MM-DD output
+- When date format is ambiguous (e.g., 04/06/2025 could be April 6 or June 4), use these heuristics:
+  * Prefer DD/MM interpretation if both are valid dates
+  * Choose the date closest to current month (${currentMonth}/${currentYear})
+  * Example: if it's September, 04/06 is more likely June 4th than April 6th
+- If the statement omits the year entirely, infer a single consistent year for all rows based on any printed year (e.g. statement period). When no year is visible anywhere, keep the same year as the first transaction you extract and do not decrement the year when the month number decreases.
 - Payee: merchant/company name
 - Memo: Only foreign currency (e.g. "USD 50.00") or location if different from payee
 - Outflow: charges/debits as positive amount with $ (e.g. "$123.45")
@@ -185,6 +190,10 @@ Return a JSON array where each transaction has these fields:
 - inflow: credit amount with $ (e.g. "$50.00") or empty string ""
 
 Rules:
+- Date format: Intelligently parse dates which may be in DD/MM/YYYY, MM/DD/YYYY or other formats
+- For ambiguous dates (e.g., 04/06 could be April 6 or June 4):
+  * Prefer DD/MM interpretation when both are valid
+  * Choose the date closest to ${currentMonth}/${currentYear}
 - Each transaction has EITHER outflow OR inflow, never both
 - If the statement omits the year, assume the entire statement belongs to a single year. Use any printed statement year if present; otherwise keep the same inferred year for every row even when the month number wraps around.
 - Do NOT include reference numbers in memo
@@ -244,6 +253,10 @@ Return a JSON array where each transaction has these fields:
 - inflow: credit amount with $ (e.g. "$50.00") or empty string ""
 
 Rules:
+- Date format: Intelligently parse dates which may be in DD/MM/YYYY, MM/DD/YYYY or other formats
+- For ambiguous dates (e.g., 04/06 could be April 6 or June 4):
+  * Prefer DD/MM interpretation when both are valid
+  * Choose the date closest to ${currentMonth}/${currentYear}
 - Each transaction has EITHER outflow OR inflow, never both
 - If the statement omits the year, assume the entire statement belongs to a single year. Use any printed statement year if present; otherwise keep the same inferred year for every row even when the month number wraps around.
 - Do NOT include reference numbers in memo
