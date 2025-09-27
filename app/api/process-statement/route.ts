@@ -51,13 +51,11 @@ export async function POST(request: NextRequest) {
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth() + 1;
 
-    let messages;
-    let model = 'glm-4.5v'; // Default to vision model for z.ai
+    let extractedText = '';
+    let imageData = null;
 
-    // Handle PDFs and images
+    // Handle PDFs - extract text
     if (file.type === 'application/pdf') {
-      // Extract text from PDF
-      let extractedText = '';
       try {
         extractedText = await parsePDF(buffer);
         console.log('Extracted PDF text (first 500 chars):', extractedText.substring(0, 500));
@@ -72,92 +70,89 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-
-      // Use text model for PDFs with z.ai
-      model = 'glm-4.5';
-
-      messages = [
-        {
-          role: 'system',
-          content: 'Extract credit card transactions and return as JSON.'
-        },
-        {
-          role: 'user',
-          content: `Extract all transactions from this statement.
-
-Date format: YYYY-MM-DD
-Today: ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
-
-Return JSON array with fields: date, payee, memo, outflow, inflow
-
-Statement:
-${extractedText}
-
-Output only the JSON array.`
-        }
-      ];
     } else {
       // Handle images
       const base64 = buffer.toString('base64');
       const mimeType = file.type || 'image/jpeg';
-      const dataUri = `data:${mimeType};base64,${base64}`;
-
-      messages = [
-        {
-          role: 'system',
-          content: 'Extract credit card transactions and return as JSON.'
-        },
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: `Extract all transactions from this statement.
-
-Date format: YYYY-MM-DD
-Today: ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
-
-Return JSON array with fields: date, payee, memo, outflow, inflow
-
-Output only the JSON array.`
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: dataUri
-              }
-            }
-          ]
-        }
-      ];
+      imageData = `data:${mimeType};base64,${base64}`;
     }
 
     try {
       let response;
+      let transactions = [];
 
       if (LLM_PROVIDER === 'lm-studio') {
+        // LOCAL MODEL PATH - Two-step CSV approach
         console.log(`Calling LM Studio: ${LM_STUDIO_MODEL}`);
 
-        // For local models, use two-step approach
-        // Step 1: Get CSV
+        // Step 1: Extract to CSV (simpler for local models)
+        let csvPrompt;
+        let csvMessages;
+
+        if (imageData) {
+          // For images
+          csvMessages = [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: `Extract all credit card transactions from this image to CSV format.
+
+Today's date: ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
+
+Create CSV with headers: Date,Payee,Memo,Outflow,Inflow
+
+Rules:
+- Date: YYYY-MM-DD format. If no year shown: months after ${currentMonth} use ${currentYear - 1}, others use ${currentYear}
+- Payee: merchant/company name
+- Memo: Only foreign currency (e.g. "USD 50.00") or location if different from payee
+- Outflow: charges/debits as positive amount with $ (e.g. "$123.45")
+- Inflow: credits/payments as positive amount with $ (e.g. "$50.00")
+- Each row has EITHER Outflow OR Inflow, not both
+- Extract EVERY transaction visible
+
+Output the CSV starting with the header line.`
+                },
+                {
+                  type: 'image_url',
+                  image_url: { url: imageData }
+                }
+              ]
+            }
+          ];
+        } else {
+          // For PDFs/text
+          csvMessages = [
+            {
+              role: 'user',
+              content: `Extract all credit card transactions to CSV format.
+
+Today's date: ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
+
+Statement text:
+${extractedText}
+
+Create CSV with headers: Date,Payee,Memo,Outflow,Inflow
+
+Rules:
+- Date: YYYY-MM-DD format. If no year shown: months after ${currentMonth} use ${currentYear - 1}, others use ${currentYear}
+- Payee: merchant/company name
+- Memo: Only foreign currency or location if different from payee
+- Outflow: charges/debits with $
+- Inflow: credits/payments with $
+- Each row has EITHER Outflow OR Inflow
+
+Output the CSV starting with the header line.`
+            }
+          ];
+        }
+
         const csvResponse = await axios.post(
           `${LM_STUDIO_URL}/chat/completions`,
           {
             model: LM_STUDIO_MODEL,
-            messages: [
-              {
-                role: 'user',
-                content: messages[1].content && Array.isArray(messages[1].content)
-                  ? [
-                      {
-                        type: 'text',
-                        text: 'Extract all transactions to CSV format. Headers: Date,Payee,Memo,Outflow,Inflow'
-                      },
-                      ...messages[1].content.filter(item => item.type === 'image_url')
-                    ]
-                  : 'Extract all transactions to CSV format. Headers: Date,Payee,Memo,Outflow,Inflow\n\n' + extractedText
-              }
-            ],
+            messages: csvMessages,
             temperature: 0,
             max_tokens: 4000
           },
@@ -167,17 +162,23 @@ Output only the JSON array.`
         );
 
         const csvContent = csvResponse.data.choices[0].message.content;
-        console.log('CSV extracted:', csvContent);
+        console.log('Step 1 - CSV extracted:', csvContent);
 
-        // Step 2: Convert to JSON
-        response = await axios.post(
+        // Step 2: Convert CSV to JSON
+        const jsonResponse = await axios.post(
           `${LM_STUDIO_URL}/chat/completions`,
           {
             model: LM_STUDIO_MODEL,
             messages: [
               {
                 role: 'user',
-                content: `Convert this CSV to JSON:\n\n${csvContent}\n\nOutput only the JSON array.`
+                content: `Convert this CSV to JSON array. Each row becomes an object with lowercase keys: date, payee, memo, outflow, inflow.
+Empty cells become empty strings "".
+
+CSV:
+${csvContent}
+
+Output only the JSON array starting with [ and ending with ]`
               }
             ],
             temperature: 0,
@@ -188,9 +189,83 @@ Output only the JSON array.`
           }
         );
 
+        response = jsonResponse;
+        console.log('Step 2 - Converted to JSON');
+
       } else {
-        // Z.AI - single step
+        // Z.AI PATH - Direct JSON extraction
+        let model = imageData ? 'glm-4.5v' : 'glm-4.5';
         console.log(`Calling z.ai API with model: ${model}`);
+
+        let messages;
+        if (imageData) {
+          // For images
+          messages = [
+            {
+              role: 'system',
+              content: 'You are a financial data extraction assistant. Extract credit card transactions and return them in JSON format.'
+            },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: `Extract all credit card transactions from this statement image.
+
+Today's date: ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
+
+Return a JSON array where each transaction has these fields:
+- date: YYYY-MM-DD format (use transaction date, not posting date)
+- payee: merchant name
+- memo: foreign currency (e.g. "USD 50.00") or location only, leave empty if none
+- outflow: debit amount with $ (e.g. "$123.45") or empty string ""
+- inflow: credit amount with $ (e.g. "$50.00") or empty string ""
+
+Rules:
+- Each transaction has EITHER outflow OR inflow, never both
+- If date has no year: months after ${currentMonth} are from ${currentYear - 1}, others are ${currentYear}
+- Do NOT include reference numbers in memo
+
+Return ONLY the JSON array, no other text.`
+                },
+                {
+                  type: 'image_url',
+                  image_url: { url: imageData }
+                }
+              ]
+            }
+          ];
+        } else {
+          // For PDFs/text
+          messages = [
+            {
+              role: 'system',
+              content: 'You are a financial data extraction assistant. Extract credit card transactions and return them in JSON format.'
+            },
+            {
+              role: 'user',
+              content: `Extract all credit card transactions from this statement text.
+
+Today's date: ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
+
+Statement text:
+${extractedText}
+
+Return a JSON array where each transaction has these fields:
+- date: YYYY-MM-DD format (use transaction date, not posting date)
+- payee: merchant name
+- memo: foreign currency or location only, leave empty if none
+- outflow: debit amount with $ or empty string ""
+- inflow: credit amount with $ or empty string ""
+
+Rules:
+- Each transaction has EITHER outflow OR inflow, never both
+- If date has no year: months after ${currentMonth} are from ${currentYear - 1}, others are ${currentYear}
+
+Return ONLY the JSON array.`
+            }
+          ];
+        }
 
         response = await axios.post(
           'https://api.z.ai/api/paas/v4/chat/completions',
@@ -210,9 +285,9 @@ Output only the JSON array.`
       }
 
       // Parse the response
-      let transactions = [];
       try {
         let content = response.data.choices[0].message.content;
+        console.log('AI Response:', content.substring(0, 500));
 
         // Clean up common issues
         content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '');
@@ -234,7 +309,7 @@ Output only the JSON array.`
         });
       }
 
-      // Clean the transactions
+      // Clean and validate transactions
       const cleanedTransactions = transactions.map((tx: TransactionData) => ({
         date: tx.date || '',
         payee: tx.payee || tx.merchant || '',
@@ -254,6 +329,13 @@ Output only the JSON array.`
         return NextResponse.json(
           { error: `Cannot connect to LM Studio at ${LM_STUDIO_URL}. Please ensure LM Studio is running.` },
           { status: 503 }
+        );
+      }
+
+      if (error.response?.status === 401) {
+        return NextResponse.json(
+          { error: `Invalid API key for ${provider}` },
+          { status: 401 }
         );
       }
 
