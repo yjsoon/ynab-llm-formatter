@@ -66,6 +66,11 @@ export async function POST(request: NextRequest) {
       // Use text model for PDFs
       model = 'glm-4.5';
 
+      // Get current date for year inference
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear();
+      const currentMonth = currentDate.getMonth() + 1; // 0-indexed
+
       messages = [
         {
           role: 'system',
@@ -89,6 +94,16 @@ Important rules:
 - Include foreign currency amounts in the memo field if present
 - Extract ALL transactions you can find in the text
 
+CRITICAL DATE HANDLING:
+- Today's date is ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
+- If the statement shows dates without years, determine the year as follows:
+  * If the month is AFTER the current month (${currentMonth}), it's from LAST YEAR (${currentYear - 1})
+  * If the month is BEFORE or EQUAL to the current month, it's from THIS YEAR (${currentYear})
+  * Example: If today is January ${currentYear} and you see "December 15", that's ${currentYear - 1}-12-15
+  * Example: If today is March ${currentYear} and you see "January 10", that's ${currentYear}-01-10
+- If a statement shows only day/month without year, use the logic above
+- NEVER use years like 2023 or earlier unless explicitly shown in the statement
+
 Statement text:
 ${extractedText}
 
@@ -100,6 +115,11 @@ Return ONLY a valid JSON array of transactions with these exact field names. No 
       const base64 = buffer.toString('base64');
       const mimeType = file.type || 'image/jpeg';
       const dataUri = `data:${mimeType};base64,${base64}`;
+
+      // Get current date for year inference
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear();
+      const currentMonth = currentDate.getMonth() + 1; // 0-indexed
 
       messages = [
         {
@@ -125,6 +145,16 @@ Important rules:
 - All amounts should be positive numbers with $ signs
 - Dates must be in YYYY-MM-DD format
 - Include foreign currency amounts in the memo field if present
+
+CRITICAL DATE HANDLING:
+- Today's date is ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
+- If the statement shows dates without years, determine the year as follows:
+  * If the month is AFTER the current month (${currentMonth}), it's from LAST YEAR (${currentYear - 1})
+  * If the month is BEFORE or EQUAL to the current month, it's from THIS YEAR (${currentYear})
+  * Example: If today is January ${currentYear} and you see "December 15", that's ${currentYear - 1}-12-15
+  * Example: If today is March ${currentYear} and you see "January 10", that's ${currentYear}-01-10
+- If a statement shows only day/month without year, use the logic above
+- NEVER use years like 2023 or earlier unless explicitly shown in the statement
 
 Return ONLY a valid JSON array of transactions with these exact field names. No additional text or explanation.`
             },
