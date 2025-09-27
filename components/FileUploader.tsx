@@ -88,7 +88,7 @@ export default function FileUploader({ onFileProcess, isLoading }: FileUploaderP
           type="file"
           className="hidden"
           onChange={handleChange}
-          accept=".pdf,.png,.jpg,.jpeg"
+          accept=".png,.jpg,.jpeg,.webp"
           multiple
         />
 
@@ -132,7 +132,7 @@ export default function FileUploader({ onFileProcess, isLoading }: FileUploaderP
                 </button>
               </p>
               <p className="text-xs text-slate-400">
-                Supports multiple PDF, PNG, JPG files
+                Supports PNG, JPG, JPEG, WebP images
               </p>
             </>
           )}

@@ -7,8 +7,6 @@ const Z_AI_API_KEY = process.env.Z_AI_API_KEY;
 const LM_STUDIO_URL = process.env.LM_STUDIO_URL || 'http://localhost:1234/v1';
 const LM_STUDIO_MODEL = process.env.LM_STUDIO_MODEL || 'qwen2.5-vl-7b-instruct';
 
-// Import the CommonJS module
-const { parsePDF } = require('@/lib/pdf-parser');
 
 interface TransactionData {
   date?: string;
@@ -34,6 +32,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if file is an image
+    if (!file.type.startsWith('image/')) {
+      return NextResponse.json(
+        { error: 'Only image files (PNG/JPG) are supported' },
+        { status: 400 }
+      );
+    }
+
     // Check configuration based on provider
     if (LLM_PROVIDER === 'z.ai' && !Z_AI_API_KEY) {
       console.error('Z_AI_API_KEY not configured');
@@ -51,31 +57,10 @@ export async function POST(request: NextRequest) {
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth() + 1;
 
-    let extractedText = '';
-    let imageData = null;
-
-    // Handle PDFs - extract text
-    if (file.type === 'application/pdf') {
-      try {
-        extractedText = await parsePDF(buffer);
-        console.log('Extracted PDF text (first 500 chars):', extractedText.substring(0, 500));
-
-        if (!extractedText || extractedText.trim().length === 0) {
-          throw new Error('No text could be extracted from PDF');
-        }
-      } catch (err) {
-        console.error('PDF extraction failed:', err);
-        return NextResponse.json(
-          { error: 'Failed to extract text from PDF. Please try converting to an image (PNG/JPG) instead.' },
-          { status: 400 }
-        );
-      }
-    } else {
-      // Handle images
-      const base64 = buffer.toString('base64');
-      const mimeType = file.type || 'image/jpeg';
-      imageData = `data:${mimeType};base64,${base64}`;
-    }
+    // Process image
+    const base64 = buffer.toString('base64');
+    const mimeType = file.type || 'image/jpeg';
+    const imageData = `data:${mimeType};base64,${base64}`;
 
     try {
       let response;
@@ -86,18 +71,13 @@ export async function POST(request: NextRequest) {
         console.log(`Calling LM Studio: ${LM_STUDIO_MODEL}`);
 
         // Step 1: Extract to CSV (simpler for local models)
-        let csvPrompt;
-        let csvMessages;
-
-        if (imageData) {
-          // For images
-          csvMessages = [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: `Extract all credit card transactions from this image to CSV format.
+        const csvMessages = [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Extract all credit card transactions from this image to CSV format.
 
 Today's date: ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
 
@@ -113,40 +93,14 @@ Rules:
 - Extract EVERY transaction visible
 
 Output the CSV starting with the header line.`
-                },
-                {
-                  type: 'image_url',
-                  image_url: { url: imageData }
-                }
-              ]
-            }
-          ];
-        } else {
-          // For PDFs/text
-          csvMessages = [
-            {
-              role: 'user',
-              content: `Extract all credit card transactions to CSV format.
-
-Today's date: ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
-
-Statement text:
-${extractedText}
-
-Create CSV with headers: Date,Payee,Memo,Outflow,Inflow
-
-Rules:
-- Date: YYYY-MM-DD format. If no year shown: months after ${currentMonth} use ${currentYear - 1}, others use ${currentYear}
-- Payee: merchant/company name
-- Memo: Only foreign currency or location if different from payee
-- Outflow: charges/debits with $
-- Inflow: credits/payments with $
-- Each row has EITHER Outflow OR Inflow
-
-Output the CSV starting with the header line.`
-            }
-          ];
-        }
+              },
+              {
+                type: 'image_url',
+                image_url: { url: imageData }
+              }
+            ]
+          }
+        ];
 
         const csvResponse = await axios.post(
           `${LM_STUDIO_URL}/chat/completions`,
@@ -194,23 +148,20 @@ Output only the JSON array starting with [ and ending with ]`
 
       } else {
         // Z.AI PATH - Direct JSON extraction
-        let model = imageData ? 'glm-4.5v' : 'glm-4.5';
+        const model = 'glm-4.5v';
         console.log(`Calling z.ai API with model: ${model}`);
 
-        let messages;
-        if (imageData) {
-          // For images
-          messages = [
-            {
-              role: 'system',
-              content: 'You are a financial data extraction assistant. Extract credit card transactions and return them in JSON format.'
-            },
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: `Extract all credit card transactions from this statement image.
+        const messages = [
+          {
+            role: 'system',
+            content: 'You are a financial data extraction assistant. Extract credit card transactions and return them in JSON format.'
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Extract all credit card transactions from this statement image.
 
 Today's date: ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
 
@@ -227,45 +178,14 @@ Rules:
 - Do NOT include reference numbers in memo
 
 Return ONLY the JSON array, no other text.`
-                },
-                {
-                  type: 'image_url',
-                  image_url: { url: imageData }
-                }
-              ]
-            }
-          ];
-        } else {
-          // For PDFs/text
-          messages = [
-            {
-              role: 'system',
-              content: 'You are a financial data extraction assistant. Extract credit card transactions and return them in JSON format.'
-            },
-            {
-              role: 'user',
-              content: `Extract all credit card transactions from this statement text.
-
-Today's date: ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
-
-Statement text:
-${extractedText}
-
-Return a JSON array where each transaction has these fields:
-- date: YYYY-MM-DD format (use transaction date, not posting date)
-- payee: merchant name
-- memo: foreign currency or location only, leave empty if none
-- outflow: debit amount with $ or empty string ""
-- inflow: credit amount with $ or empty string ""
-
-Rules:
-- Each transaction has EITHER outflow OR inflow, never both
-- If date has no year: months after ${currentMonth} are from ${currentYear - 1}, others are ${currentYear}
-
-Return ONLY the JSON array.`
-            }
-          ];
-        }
+              },
+              {
+                type: 'image_url',
+                image_url: { url: imageData }
+              }
+            ]
+          }
+        ];
 
         response = await axios.post(
           'https://api.z.ai/api/paas/v4/chat/completions',

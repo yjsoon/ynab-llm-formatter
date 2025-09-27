@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A Next.js application that converts credit card statements (PDF/image) to YNAB-compatible CSV format using AI-powered extraction via the z.ai API.
+A Next.js application that converts credit card statement images to YNAB-compatible CSV format using AI-powered extraction via the z.ai API.
 
 ## Commands
 
@@ -23,11 +23,8 @@ npm run lint          # Run ESLint
 ### Core Components
 
 1. **API Route Processing** (`app/api/process-statement/route.ts`)
-   - Accepts PDF or image files via multipart form upload
-   - PDF text extraction using `pdf-parse` via CommonJS module in `lib/pdf-parser.js`
-   - Uses z.ai API with model switching:
-     - `glm-4.5` for text-based PDF processing
-     - `glm-4.5v` vision model for images
+   - Accepts image files (PNG/JPG) via multipart form upload
+   - Uses z.ai API with `glm-4.5v` vision model for image processing
    - Returns transactions in YNAB format (date, payee, memo, outflow, inflow)
 
 2. **Frontend Flow**
@@ -67,12 +64,11 @@ LM_STUDIO_MODEL=mini-cpm  # or your loaded model name
 3. Start the local server (usually on port 1234)
 4. Update `.env` with `LLM_PROVIDER=lm-studio`
 
-**Note:** For image processing with LM Studio, ensure your model supports vision capabilities. Text-based PDFs will work with any model.
+**Note:** For image processing with LM Studio, ensure your model supports vision capabilities.
 
 ### Key Dependencies
 
 - **Next.js 15.5.3** with App Router and Turbopack
-- **pdf-parse**: Extract text from PDFs (wrapped in CommonJS module)
 - **papaparse**: CSV generation
 - **axios**: API calls to z.ai
 - **Tailwind CSS v4**: Styling
