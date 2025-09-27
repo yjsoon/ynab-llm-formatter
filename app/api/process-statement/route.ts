@@ -186,39 +186,54 @@ Return ONLY the JSON array, no other text.`
       let response;
 
       if (LLM_PROVIDER === 'lm-studio') {
-        // LM Studio configuration (OpenAI-compatible API)
-        console.log(`Calling LM Studio with model: ${LM_STUDIO_MODEL}`);
+        // LM Studio configuration - Two-step approach for better accuracy
+        console.log(`Calling LM Studio with model: ${LM_STUDIO_MODEL} (Two-step extraction)`);
 
-        // Optimize prompts for local models like Qwen
-        const optimizedMessages = messages.map(msg => {
-          if (msg.role === 'system') {
-            // Stronger system prompt for local models
-            return {
-              ...msg,
-              content: 'You are a JSON extraction tool. Extract transaction data and output ONLY valid JSON. No explanations, no markdown, just JSON array.'
-            };
-          }
-          if (msg.role === 'user' && typeof msg.content === 'string') {
-            // Simplify for text-based PDFs
-            return {
-              ...msg,
-              content: msg.content.replace('Return ONLY the JSON array, no other text.',
-                'Output format: JSON array only.\nStart your response with [ and end with ]')
-            };
-          }
-          return msg;
-        });
+        // Step 1: Extract to CSV format (simpler for local models)
+        const csvExtractionMessages = [
+          {
+            role: 'system',
+            content: 'You are a CSV data extractor. Extract transaction data from images into CSV format.'
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Extract ALL credit card transactions from this image into CSV format.
 
-        response = await axios.post(
+Today is ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}.
+
+Create a CSV with these exact columns:
+Date,Payee,Memo,Outflow,Inflow
+
+Rules:
+- Date: Use YYYY-MM-DD format
+- If date has no year: months after ${currentMonth} = year ${currentYear - 1}, others = ${currentYear}
+- Payee: The merchant name
+- Memo: Only foreign currency like "USD 50.00" or location, otherwise leave empty
+- Outflow: Charges with $ (like $123.45), otherwise empty
+- Inflow: Credits/payments with $ (like $50.00), otherwise empty
+- Each transaction has EITHER Outflow OR Inflow, not both
+
+Output ONLY the CSV data, starting with the header line.
+Extract EVERY transaction you can see.`
+              },
+              ...(messages[1].content && Array.isArray(messages[1].content)
+                ? messages[1].content.filter(item => item.type === 'image_url')
+                : [])
+            ]
+          }
+        ];
+
+        const csvResponse = await axios.post(
           `${LM_STUDIO_URL}/chat/completions`,
           {
             model: LM_STUDIO_MODEL,
-            messages: optimizedMessages,
-            temperature: 0.0, // More deterministic for local models
+            messages: csvExtractionMessages,
+            temperature: 0.0,
             max_tokens: 4000,
-            top_p: 0.1, // Reduce randomness
-            frequency_penalty: 0,
-            presence_penalty: 0
+            top_p: 0.1
           },
           {
             headers: {
@@ -226,6 +241,44 @@ Return ONLY the JSON array, no other text.`
             }
           }
         );
+
+        const csvContent = csvResponse.data.choices[0].message.content;
+        console.log('Step 1 - CSV extracted:', csvContent);
+
+        // Step 2: Convert CSV to JSON
+        const jsonConversionMessages = [
+          {
+            role: 'system',
+            content: 'Convert CSV data to JSON format. Output only valid JSON.'
+          },
+          {
+            role: 'user',
+            content: `Convert this CSV to JSON array:
+
+${csvContent}
+
+Each row becomes an object with lowercase keys: date, payee, memo, outflow, inflow
+Empty values should be empty strings "".
+Output ONLY the JSON array, starting with [ and ending with ]`
+          }
+        ];
+
+        response = await axios.post(
+          `${LM_STUDIO_URL}/chat/completions`,
+          {
+            model: LM_STUDIO_MODEL,
+            messages: jsonConversionMessages,
+            temperature: 0.0,
+            max_tokens: 4000
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        console.log('Step 2 - JSON conversion complete');
       } else {
         // Z.AI configuration (default)
         console.log(`Calling z.ai API with model: ${model}`);
