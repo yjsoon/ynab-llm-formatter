@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 
+// LLM Configuration
+const LLM_PROVIDER = process.env.LLM_PROVIDER || 'z.ai';
 const Z_AI_API_KEY = process.env.Z_AI_API_KEY;
+const LM_STUDIO_URL = process.env.LM_STUDIO_URL || 'http://localhost:1234/v1';
+const LM_STUDIO_MODEL = process.env.LM_STUDIO_MODEL || 'mini-cpm';
 
 // Import the CommonJS module
 const { parsePDF } = require('@/lib/pdf-parser');
@@ -30,10 +34,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!Z_AI_API_KEY) {
+    // Check configuration based on provider
+    if (LLM_PROVIDER === 'z.ai' && !Z_AI_API_KEY) {
       console.error('Z_AI_API_KEY not configured');
       return NextResponse.json(
-        { error: 'API key not configured' },
+        { error: 'Z.AI API key not configured' },
         { status: 500 }
       );
     }
@@ -185,23 +190,60 @@ Return ONLY a valid JSON array of transactions with these exact field names. No 
     }
 
     try {
-      console.log(`Calling z.ai API with model: ${model}`);
+      let response;
 
-      const response = await axios.post(
-        'https://api.z.ai/api/paas/v4/chat/completions',
-        {
-          model,
-          messages,
-          temperature: 0.1,
-          max_tokens: 4000
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${Z_AI_API_KEY}`,
-            'Content-Type': 'application/json'
+      if (LLM_PROVIDER === 'lm-studio') {
+        // LM Studio configuration (OpenAI-compatible API)
+        console.log(`Calling LM Studio with model: ${LM_STUDIO_MODEL}`);
+
+        // For LM Studio, we need to use text-only prompts since Mini CPM might not support vision
+        // Convert image messages to text-only format if needed
+        const lmStudioMessages = messages.map(msg => {
+          if (msg.content && Array.isArray(msg.content)) {
+            // Extract text from multi-modal messages
+            const textContent = msg.content.find(item => item.type === 'text');
+            return {
+              ...msg,
+              content: textContent ? textContent.text : 'Please extract transactions from the document.'
+            };
           }
-        }
-      );
+          return msg;
+        });
+
+        response = await axios.post(
+          `${LM_STUDIO_URL}/chat/completions`,
+          {
+            model: LM_STUDIO_MODEL,
+            messages: lmStudioMessages,
+            temperature: 0.1,
+            max_tokens: 4000
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+      } else {
+        // Z.AI configuration (default)
+        console.log(`Calling z.ai API with model: ${model}`);
+
+        response = await axios.post(
+          'https://api.z.ai/api/paas/v4/chat/completions',
+          {
+            model,
+            messages,
+            temperature: 0.1,
+            max_tokens: 4000
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${Z_AI_API_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+      }
 
       // Parse the response
       let transactions = [];
@@ -250,11 +292,19 @@ Return ONLY a valid JSON array of transactions with these exact field names. No 
 
     } catch (apiError) {
       const error = apiError as any;
-      console.error('z.ai API error:', error.response?.data || error.message);
+      const provider = LLM_PROVIDER === 'lm-studio' ? 'LM Studio' : 'z.ai';
+      console.error(`${provider} API error:`, error.response?.data || error.message);
+
+      if (error.code === 'ECONNREFUSED' && LLM_PROVIDER === 'lm-studio') {
+        return NextResponse.json(
+          { error: `Cannot connect to LM Studio at ${LM_STUDIO_URL}. Please ensure LM Studio is running and the server is started.` },
+          { status: 503 }
+        );
+      }
 
       if (error.response?.status === 401) {
         return NextResponse.json(
-          { error: 'Invalid API key. Please check your z.ai API key.' },
+          { error: `Invalid API key. Please check your ${provider} API key.` },
           { status: 401 }
         );
       }
@@ -267,7 +317,7 @@ Return ONLY a valid JSON array of transactions with these exact field names. No 
       }
 
       return NextResponse.json(
-        { error: `API error: ${error.response?.data?.error?.message || error.message}` },
+        { error: `${provider} API error: ${error.response?.data?.error?.message || error.message}` },
         { status: 500 }
       );
     }

@@ -46,10 +46,28 @@ Transactions follow YNAB CSV structure:
 
 ### Environment Configuration
 
-Required environment variable in `.env`:
+The application supports two LLM providers:
+
+#### Option 1: Z.AI (Cloud-based)
 ```
+LLM_PROVIDER=z.ai
 Z_AI_API_KEY=<your_api_key>
 ```
+
+#### Option 2: LM Studio (Local)
+```
+LLM_PROVIDER=lm-studio
+LM_STUDIO_URL=http://localhost:1234/v1
+LM_STUDIO_MODEL=mini-cpm  # or your loaded model name
+```
+
+**LM Studio Setup:**
+1. Download and install LM Studio from https://lmstudio.ai/
+2. Load your preferred model (e.g., Mini CPM)
+3. Start the local server (usually on port 1234)
+4. Update `.env` with `LLM_PROVIDER=lm-studio`
+
+**Note:** For image processing with LM Studio, ensure your model supports vision capabilities. Text-based PDFs will work with any model.
 
 ### Key Dependencies
 
