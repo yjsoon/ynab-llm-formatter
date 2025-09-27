@@ -1,10 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import FileUploader from '@/components/FileUploader';
 import TransactionTable from '@/components/TransactionTable';
 import { Transaction } from '@/types/transaction';
+
+// Top performing models from testing
+const OPENROUTER_MODELS = [
+  { id: 'google/gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', speed: '3.95s', free: true },
+  { id: 'mistralai/pixtral-12b', name: 'Pixtral 12B', speed: '5.64s', free: true },
+  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku', speed: '6.80s', free: true },
+  { id: 'bytedance/ui-tars-1.5-7b', name: 'UI-TARS 1.5 7B', speed: '12.26s', free: true },
+  { id: 'meta-llama/llama-4-scout:free', name: 'Llama 4 Scout', speed: '12.52s', free: true },
+  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', speed: '15.38s', free: true },
+  { id: 'qwen/qwen-2.5-vl-7b-instruct', name: 'Qwen 2.5 VL 7B', speed: '15.57s', free: true },
+  { id: 'meta-llama/llama-3.2-11b-vision-instruct', name: 'Llama 3.2 11B Vision', speed: '18.69s', free: true },
+  { id: 'google/gemma-3-27b-it:free', name: 'Gemma 3 27B', speed: '19.45s', free: true },
+  { id: 'qwen/qwen2.5-vl-32b-instruct:free', name: 'Qwen 2.5 VL 32B', speed: '20.13s', free: true },
+];
 
 export default function Home() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -12,6 +26,21 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [processingProgress, setProcessingProgress] = useState<string>('');
+  const [selectedModel, setSelectedModel] = useState<string>('google/gemini-2.5-flash-lite');
+
+  // Load saved model preference from localStorage
+  useEffect(() => {
+    const savedModel = localStorage.getItem('selectedOpenRouterModel');
+    if (savedModel && OPENROUTER_MODELS.some(m => m.id === savedModel)) {
+      setSelectedModel(savedModel);
+    }
+  }, []);
+
+  // Save model preference to localStorage
+  const handleModelChange = (model: string) => {
+    setSelectedModel(model);
+    localStorage.setItem('selectedOpenRouterModel', model);
+  };
 
   const handleFileProcess = async (files: File[]) => {
     setIsLoading(true);
@@ -28,6 +57,7 @@ export default function Home() {
 
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('model', selectedModel);
 
       try {
         const response = await fetch('/api/process-statement', {
@@ -87,6 +117,27 @@ export default function Home() {
           <p className="text-slate-600 text-center mb-8">
             Upload multiple statements and convert them to YNAB-compatible CSV format
           </p>
+
+          {/* Model Selection Dropdown */}
+          <div className="mb-6 bg-white rounded-xl shadow-md p-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              AI Model Selection
+            </label>
+            <select
+              value={selectedModel}
+              onChange={(e) => handleModelChange(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              {OPENROUTER_MODELS.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name} - {model.speed} {model.free && '(FREE)'}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-sm text-gray-500">
+              All models are currently FREE. Faster models provide quicker results.
+            </p>
+          </div>
 
           <FileUploader onFileProcess={handleFileProcess} isLoading={isLoading} />
 

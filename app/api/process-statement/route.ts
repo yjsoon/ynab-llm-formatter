@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    const selectedModel = formData.get('model') as string;
 
     if (!file) {
       return NextResponse.json(
@@ -158,7 +159,9 @@ Output only the JSON array starting with [ and ending with ]`
 
       } else if (LLM_PROVIDER === 'openrouter') {
         // OPENROUTER PATH - Direct JSON extraction
-        console.log(`Calling OpenRouter API with model: ${OPENROUTER_MODEL}`);
+        // Use selected model if provided, otherwise fall back to env variable
+        const modelToUse = selectedModel || OPENROUTER_MODEL;
+        console.log(`Calling OpenRouter API with model: ${modelToUse}`);
 
         const messages = [
           {
@@ -199,7 +202,7 @@ Return ONLY the JSON array, no other text.`
         response = await axios.post(
           'https://openrouter.ai/api/v1/chat/completions',
           {
-            model: OPENROUTER_MODEL,
+            model: modelToUse,
             messages,
             temperature: 0.1,
             max_tokens: 4000
