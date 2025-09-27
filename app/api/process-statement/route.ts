@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
           content: `Please extract all credit card transactions from this statement text and convert them to the following format:
 
 Required fields:
-- date: Transaction date in YYYY-MM-DD format
+- date: Transaction date in YYYY-MM-DD format (use TRANSACTION date, NOT posting date if both are present)
 - payee: The merchant or payee name
 - memo: ONLY include meaningful details like:
   * Foreign currency amounts (e.g., "USD 50.00")
@@ -96,6 +96,8 @@ Important rules:
 - Each transaction should have EITHER outflow OR inflow, not both
 - All amounts should be positive numbers with $ signs
 - Dates must be in YYYY-MM-DD format
+- IMPORTANT: Use the TRANSACTION DATE (when purchase was made), not the posting date (when it appeared on statement)
+- If you see two dates for an entry, the first/earlier one is usually the transaction date - use that one
 - For memo field: ONLY include useful context (foreign currency, location, additional description)
 - DO NOT put transaction IDs, reference numbers, or meaningless codes in memo
 - Extract ALL transactions you can find in the text
@@ -140,7 +142,7 @@ Return ONLY a valid JSON array of transactions with these exact field names. No 
               text: `Please extract all credit card transactions from this statement image and convert them to the following CSV format:
 
 Required fields:
-- date: Transaction date in YYYY-MM-DD format
+- date: Transaction date in YYYY-MM-DD format (use TRANSACTION date, NOT posting date if both are present)
 - payee: The merchant or payee name
 - memo: ONLY include meaningful details like:
   * Foreign currency amounts (e.g., "USD 50.00")
@@ -155,6 +157,8 @@ Important rules:
 - Each transaction should have EITHER outflow OR inflow, not both
 - All amounts should be positive numbers with $ signs
 - Dates must be in YYYY-MM-DD format
+- IMPORTANT: Use the TRANSACTION DATE (when purchase was made), not the posting date (when it appeared on statement)
+- If you see two dates for an entry, the first/earlier one is usually the transaction date - use that one
 - Include foreign currency amounts in the memo field if present
 
 CRITICAL DATE HANDLING:
