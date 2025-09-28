@@ -1,10 +1,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import FileUploader from '@/components/FileUploader';
 import TransactionTable from '@/components/TransactionTable';
+import Navbar from '@/components/Navbar';
 import { Transaction } from '@/types/transaction';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { ChevronDown, ChevronUp, AlertCircle, Info, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 
 // Top performing models from testing
 const OPENROUTER_MODELS = [
@@ -12,12 +25,12 @@ const OPENROUTER_MODELS = [
   { id: 'mistralai/pixtral-12b', name: 'Pixtral 12B', speed: '5.64s', free: false },
   { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku', speed: '6.80s', free: false },
   { id: 'bytedance/ui-tars-1.5-7b', name: 'UI-TARS 1.5 7B', speed: '12.26s', free: false },
-  { id: 'meta-llama/llama-4-scout:free', name: 'Llama 4 Scout (FREE)', speed: '12.52s', free: true },
+  { id: 'meta-llama/llama-4-scout:free', name: 'Llama 4 Scout', speed: '12.52s', free: true },
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', speed: '15.38s', free: false },
   { id: 'qwen/qwen-2.5-vl-7b-instruct', name: 'Qwen 2.5 VL 7B', speed: '15.57s', free: false },
   { id: 'meta-llama/llama-3.2-11b-vision-instruct', name: 'Llama 3.2 11B Vision', speed: '18.69s', free: false },
-  { id: 'google/gemma-3-27b-it:free', name: 'Gemma 3 27B (FREE)', speed: '19.45s', free: true },
-  { id: 'qwen/qwen2.5-vl-32b-instruct:free', name: 'Qwen 2.5 VL 32B (FREE)', speed: '20.13s', free: true },
+  { id: 'google/gemma-3-27b-it:free', name: 'Gemma 3 27B', speed: '19.45s', free: true },
+  { id: 'qwen/qwen2.5-vl-32b-instruct:free', name: 'Qwen 2.5 VL 32B', speed: '20.13s', free: true },
 ];
 
 export default function Home() {
@@ -28,6 +41,7 @@ export default function Home() {
   const [processingProgress, setProcessingProgress] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<string>('google/gemini-2.5-flash-lite');
   const [customPrompt, setCustomPrompt] = useState<string>('');
+  const [showCustomInstructions, setShowCustomInstructions] = useState(false);
 
   // Load saved model preference from localStorage
   useEffect(() => {
@@ -105,106 +119,147 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Top Right Controls */}
-      <div className="absolute top-4 right-4 flex flex-col gap-3">
-        <Link
-          href="/test"
-          className="flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow hover:shadow-md transition-shadow text-gray-700 hover:text-gray-900"
-          title="Model Testing Arena"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <span className="text-sm font-medium">Test Models</span>
-        </Link>
-        {/* Model Selection Dropdown */}
-        <div className="bg-white rounded-lg shadow p-3 min-w-[250px]">
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            AI Model
-          </label>
-          <select
-            value={selectedModel}
-            onChange={(e) => handleModelChange(e.target.value)}
-            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-          >
-            {OPENROUTER_MODELS.map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+    <div className="min-h-screen bg-background">
+      <Navbar />
 
-      <div className="container mx-auto px-4 py-12">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-4xl font-bold text-slate-800 mb-2 text-center">
-            Credit Card Statement Converter
-          </h1>
-          <p className="text-slate-600 text-center mb-8">
-            Upload multiple statements and convert them to YNAB-compatible CSV format
-          </p>
+      <main className="container mx-auto px-4 py-8">
+        <div className="max-w-5xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl font-bold tracking-tight">
+              Credit Card Statement Converter
+            </h1>
+            <p className="text-muted-foreground">
+              Upload statements and convert them to YNAB-compatible CSV format
+            </p>
+          </div>
 
-          {/* Main Processing Area */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* Left: File Upload */}
-            <div>
+          {/* Model Selector and File Upload */}
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <CardTitle>Upload Statements</CardTitle>
+                  <CardDescription>Select AI model and upload your credit card statements</CardDescription>
+                </div>
+                <Select value={selectedModel} onValueChange={handleModelChange}>
+                  <SelectTrigger className="w-full sm:w-[280px]">
+                    <SelectValue placeholder="Select AI Model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {OPENROUTER_MODELS.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        <div className="flex items-center gap-2">
+                          <span>{model.name}</span>
+                          {model.free && <Badge variant="secondary" className="text-xs">FREE</Badge>}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
+            <CardContent>
               <FileUploader
                 onFileProcess={handleFileProcess}
                 isLoading={isLoading}
                 customPrompt={customPrompt}
               />
-            </div>
+            </CardContent>
+          </Card>
 
-            {/* Right: Custom Prompt */}
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 h-fit">
-              <h3 className="text-lg font-semibold text-slate-800 mb-3">Custom Instructions</h3>
-              <p className="text-sm text-slate-600 mb-3">
-                Add specific instructions to help the AI better extract your transactions
-              </p>
-              <textarea
-                value={customPrompt}
-                onChange={(e) => setCustomPrompt(e.target.value)}
-                placeholder="E.g., This bank uses DD/MM format. Foreign transactions show original currency in brackets. Ignore fee reversals."
-                className="w-full px-3 py-2 text-sm text-slate-700 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none placeholder:text-slate-400"
-                rows={6}
-              />
-              <div className="mt-2 text-xs text-slate-500">
-                Examples:
-                <ul className="mt-1 space-y-1">
-                  <li>• "Dates are in DD/MM/YYYY format"</li>
-                  <li>• "Ignore transactions marked as 'REVERSAL'"</li>
-                  <li>• "Foreign amounts shown as (USD 50.00)"</li>
-                </ul>
+          {/* Custom Instructions Card */}
+          <Card>
+            <CardHeader
+              className="cursor-pointer select-none"
+              onClick={() => setShowCustomInstructions(!showCustomInstructions)}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg">Custom Instructions</CardTitle>
+                  <CardDescription>
+                    Add specific instructions to help the AI extract transactions accurately
+                  </CardDescription>
+                </div>
+                <Button variant="ghost" size="icon">
+                  {showCustomInstructions ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
               </div>
-            </div>
-          </div>
+            </CardHeader>
+            {showCustomInstructions && (
+              <CardContent className="space-y-4">
+                <Textarea
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  placeholder="E.g., This bank uses DD/MM format. Foreign transactions show original currency in brackets. Ignore fee reversals."
+                  className="min-h-[100px] resize-none"
+                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <Card>
+                    <CardHeader className="p-4">
+                      <CardTitle className="text-sm">Date Format</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <p className="text-xs text-muted-foreground">
+                        "Dates are in DD/MM/YYYY format"
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="p-4">
+                      <CardTitle className="text-sm">Filtering</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <p className="text-xs text-muted-foreground">
+                        "Ignore transactions marked as 'REVERSAL'"
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="p-4">
+                      <CardTitle className="text-sm">Currency</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <p className="text-xs text-muted-foreground">
+                        "Foreign amounts shown as (USD 50.00)"
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </CardContent>
+            )}
+          </Card>
 
+          {/* Progress Alert */}
           {processingProgress && (
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-blue-700 font-medium">{processingProgress}</p>
-            </div>
+            <Alert>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <AlertDescription>{processingProgress}</AlertDescription>
+            </Alert>
           )}
 
+          {/* Error Alert */}
           {error && (
-            <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700 whitespace-pre-line">{error}</p>
-            </div>
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="whitespace-pre-line">{error}</AlertDescription>
+            </Alert>
           )}
 
+          {/* Warning Alert */}
           {warning && (
-            <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-yellow-700">{warning}</p>
-            </div>
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>{warning}</AlertDescription>
+            </Alert>
           )}
 
+          {/* Transactions Table */}
           {transactions.length > 0 && (
             <TransactionTable transactions={transactions} />
           )}
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }

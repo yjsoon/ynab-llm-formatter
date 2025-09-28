@@ -3,6 +3,12 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import axios from 'axios';
+import Navbar from '@/components/Navbar';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Upload, Image as ImageIcon, BarChart3, Loader2, Check, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Available models for testing
 const AVAILABLE_MODELS = [
@@ -291,33 +297,26 @@ export default function TestPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/" className="text-gray-600 hover:text-gray-900">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-              </Link>
-              <h1 className="text-2xl font-bold text-gray-900">Model Testing Arena</h1>
-            </div>
-            <div className="text-sm text-gray-500">
-              Compare AI models side by side
-            </div>
-          </div>
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <main className="max-w-5xl mx-auto px-4 py-8">
+        {/* Page Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold tracking-tight mb-2">Model Testing Arena</h1>
+          <p className="text-muted-foreground">
+            Compare AI models side by side
+          </p>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Panel - File Upload & Model Selection */}
           <div className="lg:col-span-1 space-y-6">
             {/* File Upload */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4">1. Select Test Image</h2>
+            <Card>
+              <CardHeader>
+                <CardTitle>1. Select Test Image</CardTitle>
+              </CardHeader>
+              <CardContent>
 
               <input
                 ref={fileInputRef}
@@ -333,12 +332,10 @@ export default function TestPage() {
               {!imagePreview ? (
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-gray-400 transition-colors"
+                  className="w-full border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 hover:border-primary/50 transition-colors"
                 >
-                  <svg className="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                  <p className="text-sm text-gray-600">Click to select image</p>
+                  <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-sm text-muted-foreground">Click to select image</p>
                 </button>
               ) : (
                 <div className="relative">
@@ -359,7 +356,8 @@ export default function TestPage() {
                   </button>
                 </div>
               )}
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Model Selection */}
             <div className="bg-white rounded-lg shadow p-6">
@@ -685,7 +683,7 @@ export default function TestPage() {
             )}
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
