@@ -1,20 +1,42 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Papa from 'papaparse';
 import { Transaction } from '@/types/transaction';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Download, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface TransactionTableProps {
   transactions: Transaction[];
+  onTransactionsChange?: (transactions: Transaction[]) => void;
 }
 
-export default function TransactionTable({ transactions }: TransactionTableProps) {
+export default function TransactionTable({ transactions, onTransactionsChange }: TransactionTableProps) {
   const [editedTransactions, setEditedTransactions] = useState(transactions);
+
+  // Sync with parent when transactions prop changes
+  useEffect(() => {
+    setEditedTransactions(transactions);
+  }, [transactions]);
 
   const handleEdit = (index: number, field: keyof Transaction, value: string) => {
     const updated = [...editedTransactions];
     updated[index] = { ...updated[index], [field]: value };
     setEditedTransactions(updated);
+    if (onTransactionsChange) {
+      onTransactionsChange(updated);
+    }
+  };
+
+  const handleDeleteRow = (index: number) => {
+    const updated = editedTransactions.filter((_, i) => i !== index);
+    setEditedTransactions(updated);
+    if (onTransactionsChange) {
+      onTransactionsChange(updated);
+    }
   };
 
   const handleDownloadCSV = () => {
@@ -46,58 +68,63 @@ export default function TransactionTable({ transactions }: TransactionTableProps
   };
 
   return (
-    <div className="mt-8">
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-slate-800">
-            Extracted Transactions ({editedTransactions.length})
-          </h2>
-          <button
-            onClick={handleDownloadCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-              />
-            </svg>
-            Download CSV
-          </button>
+    <Card className="bg-gradient-to-br from-card via-card to-success/5 border-success/20">
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle>Extracted Transactions</CardTitle>
+            <CardDescription>
+              Review and edit transactions before downloading
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-4">
+            <Badge variant="secondary" className="text-lg px-3 py-1">
+              {editedTransactions.length} {editedTransactions.length === 1 ? 'transaction' : 'transactions'}
+            </Badge>
+            <Button
+              onClick={handleDownloadCSV}
+              className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download CSV
+            </Button>
+          </div>
         </div>
-
+      </CardHeader>
+      <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px]">
-            <thead className="bg-slate-50 border-b border-slate-200">
+          <table className="w-full">
+            <thead className="bg-muted/50 border-y">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider whitespace-nowrap" style={{minWidth: '110px'}}>
+                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{minWidth: '110px'}}>
                   Date
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider" style={{minWidth: '300px'}}>
+                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{minWidth: '250px'}}>
                   Payee
                 </th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider" style={{minWidth: '250px'}}>
+                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{minWidth: '200px'}}>
                   Memo
                 </th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider whitespace-nowrap" style={{minWidth: '120px'}}>
+                <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{minWidth: '100px'}}>
                   Outflow
                 </th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider whitespace-nowrap" style={{minWidth: '120px'}}>
+                <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{minWidth: '100px'}}>
                   Inflow
+                </th>
+                <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider" style={{width: '50px'}}>
+
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-border">
               {editedTransactions.map((transaction, index) => (
-                <tr key={index} className="hover:bg-slate-50">
-                  <td className="px-3 py-2 whitespace-nowrap">
+                <tr key={index} className="hover:bg-muted/30 transition-colors group">
+                  <td className="px-3 py-2">
                     <input
                       type="text"
                       value={transaction.date}
                       onChange={(e) => handleEdit(index, 'date', e.target.value)}
-                      className="w-full px-2 py-1 text-sm text-slate-800 border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
+                      className="w-full px-2 py-1 text-sm bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary rounded"
                       style={{minWidth: '100px'}}
                     />
                   </td>
@@ -106,7 +133,7 @@ export default function TransactionTable({ transactions }: TransactionTableProps
                       type="text"
                       value={transaction.payee}
                       onChange={(e) => handleEdit(index, 'payee', e.target.value)}
-                      className="w-full px-2 py-1 text-sm text-slate-800 border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
+                      className="w-full px-2 py-1 text-sm bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary rounded"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -114,26 +141,37 @@ export default function TransactionTable({ transactions }: TransactionTableProps
                       type="text"
                       value={transaction.memo}
                       onChange={(e) => handleEdit(index, 'memo', e.target.value)}
-                      className="w-full px-2 py-1 text-sm text-slate-800 border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded"
+                      className="w-full px-2 py-1 text-sm bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary rounded"
                     />
                   </td>
-                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                  <td className="px-3 py-2">
                     <input
                       type="text"
                       value={transaction.outflow}
                       onChange={(e) => handleEdit(index, 'outflow', e.target.value)}
-                      className="w-full px-2 py-1 text-sm font-mono text-right border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded text-red-600"
-                      style={{minWidth: '100px'}}
+                      className="w-full px-2 py-1 text-sm font-mono text-right bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary rounded text-destructive"
+                      style={{minWidth: '90px'}}
                     />
                   </td>
-                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                  <td className="px-3 py-2">
                     <input
                       type="text"
                       value={transaction.inflow}
                       onChange={(e) => handleEdit(index, 'inflow', e.target.value)}
-                      className="w-full px-2 py-1 text-sm font-mono text-right border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded text-green-600"
-                      style={{minWidth: '100px'}}
+                      className="w-full px-2 py-1 text-sm font-mono text-right bg-transparent border border-transparent hover:border-border focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary rounded text-success"
+                      style={{minWidth: '90px'}}
                     />
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => handleDeleteRow(index)}
+                      title="Delete row"
+                    >
+                      <Trash2 className="h-3 w-3 text-destructive" />
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -142,17 +180,21 @@ export default function TransactionTable({ transactions }: TransactionTableProps
         </div>
 
         {editedTransactions.length === 0 && (
-          <div className="px-6 py-12 text-center text-slate-500">
+          <div className="px-6 py-12 text-center text-muted-foreground">
             No transactions to display
           </div>
         )}
-      </div>
+      </CardContent>
 
-      <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-sm text-blue-700">
-          <strong>Tip:</strong> You can edit any cell by clicking on it. All changes will be included in the downloaded CSV.
-        </p>
-      </div>
-    </div>
+      {editedTransactions.length > 0 && (
+        <div className="p-4 border-t">
+          <Alert>
+            <AlertDescription className="text-sm">
+              <strong>Tip:</strong> Click on any cell to edit. Use the delete button on hover to remove unwanted rows. All changes will be included in the downloaded CSV.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+    </Card>
   );
 }

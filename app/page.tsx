@@ -41,7 +41,6 @@ export default function Home() {
   const [processingProgress, setProcessingProgress] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<string>('google/gemini-2.5-flash-lite');
   const [customPrompt, setCustomPrompt] = useState<string>('');
-  const [showCustomInstructions, setShowCustomInstructions] = useState(false);
 
   // Load saved model preference from localStorage
   useEffect(() => {
@@ -57,11 +56,12 @@ export default function Home() {
     localStorage.setItem('selectedOpenRouterModel', model);
   };
 
-  const handleFileProcess = async (files: File[]) => {
+  const handleFileProcess = async (files: File[], customInstructions: string) => {
     setIsLoading(true);
     setError(null);
     setWarning(null);
     setTransactions([]);
+    setCustomPrompt(customInstructions);
 
     const allTransactions: Transaction[] = [];
     const errors: string[] = [];
@@ -73,8 +73,8 @@ export default function Home() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('model', selectedModel);
-      if (customPrompt) {
-        formData.append('customPrompt', customPrompt);
+      if (customInstructions) {
+        formData.append('customPrompt', customInstructions);
       }
 
       try {
@@ -164,70 +164,9 @@ export default function Home() {
                 onFileProcess={handleFileProcess}
                 isLoading={isLoading}
                 customPrompt={customPrompt}
+                setCustomPrompt={setCustomPrompt}
               />
             </CardContent>
-          </Card>
-
-          {/* Custom Instructions Card */}
-          <Card className="bg-gradient-to-br from-card via-card to-secondary/10 border-secondary/20">
-            <CardHeader
-              className="cursor-pointer select-none"
-              onClick={() => setShowCustomInstructions(!showCustomInstructions)}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg">Custom Instructions</CardTitle>
-                  <CardDescription>
-                    Add specific instructions to help the AI extract transactions accurately
-                  </CardDescription>
-                </div>
-                <Button variant="ghost" size="icon">
-                  {showCustomInstructions ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </Button>
-              </div>
-            </CardHeader>
-            {showCustomInstructions && (
-              <CardContent className="space-y-4">
-                <Textarea
-                  value={customPrompt}
-                  onChange={(e) => setCustomPrompt(e.target.value)}
-                  placeholder="E.g., This bank uses DD/MM format. Foreign transactions show original currency in brackets. Ignore fee reversals."
-                  className="min-h-[100px] resize-none"
-                />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <Card className="bg-gradient-to-br from-primary/10 via-card to-card border-primary/30">
-                    <CardHeader className="p-4">
-                      <CardTitle className="text-sm">Date Format</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                      <p className="text-xs text-muted-foreground">
-                        "Dates are in DD/MM/YYYY format"
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card className="bg-gradient-to-br from-accent/10 via-card to-card border-accent/30">
-                    <CardHeader className="p-4">
-                      <CardTitle className="text-sm">Filtering</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                      <p className="text-xs text-muted-foreground">
-                        "Ignore transactions marked as 'REVERSAL'"
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card className="bg-gradient-to-br from-secondary/20 via-card to-card border-secondary/30">
-                    <CardHeader className="p-4">
-                      <CardTitle className="text-sm">Currency</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-0">
-                      <p className="text-xs text-muted-foreground">
-                        "Foreign amounts shown as (USD 50.00)"
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CardContent>
-            )}
           </Card>
 
           {/* Progress Alert */}
@@ -256,7 +195,10 @@ export default function Home() {
 
           {/* Transactions Table */}
           {transactions.length > 0 && (
-            <TransactionTable transactions={transactions} />
+            <TransactionTable
+              transactions={transactions}
+              onTransactionsChange={setTransactions}
+            />
           )}
         </div>
       </main>

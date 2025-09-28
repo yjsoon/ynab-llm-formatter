@@ -3,19 +3,40 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Upload, X, FileImage, Loader2 } from 'lucide-react';
+import { Upload, X, FileImage, Loader2, ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Textarea } from '@/components/ui/textarea';
 
 interface FileUploaderProps {
-  onFileProcess: (files: File[]) => Promise<void>;
+  onFileProcess: (files: File[], customInstructions: string) => Promise<void>;
   isLoading: boolean;
   customPrompt: string;
+  setCustomPrompt: (prompt: string) => void;
 }
 
-export default function FileUploader({ onFileProcess, isLoading, customPrompt }: FileUploaderProps) {
+export default function FileUploader({ onFileProcess, isLoading, customPrompt, setCustomPrompt }: FileUploaderProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [showCustomInstructions, setShowCustomInstructions] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Generate previous year dynamically
+  const previousYear = new Date().getFullYear() - 1;
+
+  const examplePrompts = [
+    {
+      title: 'Date Format',
+      prompt: 'Dates are in DD/MM/YYYY format'
+    },
+    {
+      title: 'Filtering',
+      prompt: "Ignore transactions marked as 'REVERSAL'"
+    },
+    {
+      title: 'Year Correction',
+      prompt: `If there is a December date, it refers to ${previousYear}`
+    }
+  ];
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -63,7 +84,7 @@ export default function FileUploader({ onFileProcess, isLoading, customPrompt }:
 
   const handleProcess = async () => {
     if (selectedFiles.length === 0) return;
-    await onFileProcess(selectedFiles);
+    await onFileProcess(selectedFiles, customPrompt);
   };
 
   const formatFileSize = (bytes: number) => {
@@ -73,6 +94,14 @@ export default function FileUploader({ onFileProcess, isLoading, customPrompt }:
   };
 
   const totalSize = selectedFiles.reduce((acc, file) => acc + file.size, 0);
+
+  const addExamplePrompt = (prompt: string) => {
+    if (customPrompt) {
+      setCustomPrompt(customPrompt + '. ' + prompt);
+    } else {
+      setCustomPrompt(prompt);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -145,6 +174,55 @@ export default function FileUploader({ onFileProcess, isLoading, customPrompt }:
             </>
           )}
         </div>
+      </div>
+
+      {/* Custom Instructions Section - Always visible below drop zone */}
+      <div className="border rounded-lg bg-card">
+        <div
+          className="flex items-center justify-between p-3 cursor-pointer select-none hover:bg-accent/5"
+          onClick={() => setShowCustomInstructions(!showCustomInstructions)}
+        >
+          <div>
+            <h4 className="text-sm font-medium">Custom Instructions</h4>
+            <p className="text-xs text-muted-foreground">
+              Add specific instructions for better accuracy
+            </p>
+          </div>
+          <Button variant="ghost" size="icon" className="h-6 w-6">
+            {showCustomInstructions ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          </Button>
+        </div>
+        {showCustomInstructions && (
+          <div className="p-3 pt-0 space-y-3">
+            <Textarea
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              placeholder="E.g., This bank uses DD/MM format. Foreign transactions show original currency in brackets. Ignore fee reversals."
+              className="min-h-[60px] text-sm resize-none"
+            />
+
+            {/* Quick Examples inside custom instructions */}
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Quick Examples (click to add):</p>
+              <div className="flex flex-wrap gap-2">
+                {examplePrompts.map((example, index) => (
+                  <button
+                    key={index}
+                    className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md border bg-muted/50 hover:bg-muted transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      addExamplePrompt(example.prompt);
+                    }}
+                    type="button"
+                  >
+                    <Plus className="h-3 w-3" />
+                    {example.title}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* File List */}
