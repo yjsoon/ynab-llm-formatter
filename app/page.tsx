@@ -127,7 +127,7 @@ export default function Home() {
           {/* Header */}
           <div className="text-center space-y-2">
             <h1 className="text-3xl font-bold tracking-tight">
-              Credit Card Statement Converter
+              Transaction Converter
             </h1>
             <p className="text-muted-foreground">
               Upload statements and convert them to YNAB-compatible CSV format
@@ -135,7 +135,7 @@ export default function Home() {
           </div>
 
           {/* Model Selector and File Upload */}
-          <Card>
+          <Card className="bg-gradient-to-br from-card via-card to-accent/5 border-accent/20">
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
@@ -169,7 +169,7 @@ export default function Home() {
           </Card>
 
           {/* Custom Instructions Card */}
-          <Card>
+          <Card className="bg-gradient-to-br from-card via-card to-secondary/10 border-secondary/20">
             <CardHeader
               className="cursor-pointer select-none"
               onClick={() => setShowCustomInstructions(!showCustomInstructions)}
@@ -195,7 +195,7 @@ export default function Home() {
                   className="min-h-[100px] resize-none"
                 />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <Card>
+                  <Card className="bg-gradient-to-br from-primary/10 via-card to-card border-primary/30">
                     <CardHeader className="p-4">
                       <CardTitle className="text-sm">Date Format</CardTitle>
                     </CardHeader>
@@ -205,7 +205,7 @@ export default function Home() {
                       </p>
                     </CardContent>
                   </Card>
-                  <Card>
+                  <Card className="bg-gradient-to-br from-accent/10 via-card to-card border-accent/30">
                     <CardHeader className="p-4">
                       <CardTitle className="text-sm">Filtering</CardTitle>
                     </CardHeader>
@@ -215,7 +215,7 @@ export default function Home() {
                       </p>
                     </CardContent>
                   </Card>
-                  <Card>
+                  <Card className="bg-gradient-to-br from-secondary/20 via-card to-card border-secondary/30">
                     <CardHeader className="p-4">
                       <CardTitle className="text-sm">Currency</CardTitle>
                     </CardHeader>

@@ -302,23 +302,19 @@ export default function TestPage() {
       <main className="max-w-5xl mx-auto px-4 py-8">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Model Testing Arena</h1>
-          <p className="text-muted-foreground">
-            Compare AI models side by side
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight">Model Lab</h1>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Panel - File Upload & Model Selection */}
           <div className="lg:col-span-1 space-y-6">
             {/* File Upload */}
-            <Card>
+            <Card className="bg-gradient-to-br from-card via-card to-primary/5 border-primary/20">
               <CardHeader>
                 <CardTitle>1. Select Test Image</CardTitle>
               </CardHeader>
               <CardContent>
-
-              <input
+                <input
                 ref={fileInputRef}
                 type="file"
                 className="hidden"
@@ -348,7 +344,7 @@ export default function TestPage() {
                       setResults([]);
                       setSummary(null);
                     }}
-                    className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600"
+                    className="absolute top-2 right-2 bg-destructive text-destructive-foreground p-2 rounded-full hover:bg-destructive/90"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -360,14 +356,17 @@ export default function TestPage() {
             </Card>
 
             {/* Model Selection */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold mb-4">
-                2. Select Models ({selectedModels.length} selected)
-              </h2>
+            <Card className="bg-gradient-to-br from-card via-card to-accent/5 border-accent/20">
+              <CardHeader>
+                <CardTitle>
+                  2. Select Models ({selectedModels.length} selected)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
 
               {/* Quick Select */}
               <div className="mb-4 flex flex-wrap gap-2">
-                <button
+                <Button
                   onClick={() => {
                     const freeModels = AVAILABLE_MODELS.filter(m => m.id.endsWith(':free')).map(m => m.id);
                     setSelectedModels(prev => {
@@ -378,46 +377,58 @@ export default function TestPage() {
                       return [...new Set([...prev, ...freeModels])];
                     });
                   }}
-                  className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full hover:bg-green-200"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-3 text-xs"
                 >
                   All Free
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => handleSelectCategory('openai')}
-                  className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-3 text-xs"
                 >
                   All OpenAI
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => handleSelectCategory('google')}
-                  className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded-full hover:bg-red-200"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-3 text-xs"
                 >
                   All Google
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => handleSelectCategory('meta')}
-                  className="px-3 py-1 text-xs bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-3 text-xs"
                 >
                   All Meta
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => setSelectedModels(AVAILABLE_MODELS.map(m => m.id))}
-                  className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-3 text-xs"
                 >
                   Select All
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => setSelectedModels([])}
-                  className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-3 text-xs"
                 >
                   Clear All
-                </button>
+                </Button>
               </div>
 
               {/* Model List */}
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {AVAILABLE_MODELS.map(model => (
-                  <label key={model.id} className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
+                  <label key={model.id} className="flex items-center p-2 hover:bg-muted rounded cursor-pointer">
                     <input
                       type="checkbox"
                       checked={selectedModels.includes(model.id)}
@@ -426,35 +437,23 @@ export default function TestPage() {
                     />
                     <div className="flex-1">
                       <div className="text-sm font-medium">{model.name}</div>
-                      <div className="text-xs text-gray-500">{model.id}</div>
+                      <div className="text-xs text-muted-foreground">{model.id}</div>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      model.id.endsWith(':free') ? 'bg-green-100 text-green-700' :
-                      model.category === 'openai' ? 'bg-blue-100 text-blue-700' :
-                      model.category === 'google' ? 'bg-red-100 text-red-700' :
-                      model.category === 'meta' ? 'bg-purple-100 text-purple-700' :
-                      model.category === 'anthropic' ? 'bg-orange-100 text-orange-700' :
-                      model.category === 'mistral' ? 'bg-indigo-100 text-indigo-700' :
-                      model.category === 'qwen' ? 'bg-teal-100 text-teal-700' :
-                      model.category === 'xai' ? 'bg-yellow-100 text-yellow-700' :
-                      model.category === 'zhipuai' ? 'bg-pink-100 text-pink-700' :
-                      model.category === 'moonshot' ? 'bg-cyan-100 text-cyan-700' :
-                      model.category === 'deepseek' ? 'bg-emerald-100 text-emerald-700' :
-                      model.category === 'bytedance' ? 'bg-rose-100 text-rose-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
-                      {model.id.endsWith(':free') ? 'FREE' : model.category}
-                    </span>
+                      <Badge variant={model.id.endsWith(':free') ? 'secondary' : 'outline'} className="text-xs">
+                        {model.id.endsWith(':free') ? 'FREE' : model.category}
+                      </Badge>
                   </label>
                 ))}
               </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Run Test Button */}
-            <button
+            <Button
               onClick={runTest}
               disabled={!selectedFile || selectedModels.length === 0 || isLoading}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+              size="lg"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center">
@@ -467,18 +466,21 @@ export default function TestPage() {
               ) : (
                 `Run Test with ${selectedModels.length} Model${selectedModels.length !== 1 ? 's' : ''}`
               )}
-            </button>
+            </Button>
           </div>
 
           {/* Right Panel - Results */}
           <div className="lg:col-span-2">
             {/* Live Status During Processing */}
             {isLoading && modelStatuses.length > 0 && (
-              <div className="bg-white rounded-lg shadow p-6 mb-6">
-                <h2 className="text-lg font-semibold mb-4">Processing Models...</h2>
+              <Card className="mb-6 bg-gradient-to-br from-card via-card to-primary/10 border-primary/30">
+                <CardHeader>
+                  <CardTitle>Processing Models...</CardTitle>
+                </CardHeader>
+                <CardContent>
                 <div className="space-y-3">
                   {modelStatuses.map(status => (
-                    <div key={status.model} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div key={status.model} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                       <div className="flex items-center space-x-3">
                         <div className={`w-3 h-3 rounded-full animate-pulse ${
                           status.status === 'processing' ? 'bg-blue-500' :
@@ -490,7 +492,7 @@ export default function TestPage() {
                           <div className="text-sm font-medium">
                             {AVAILABLE_MODELS.find(m => m.id === status.model)?.name || status.model}
                           </div>
-                          <div className="text-xs text-gray-500">{status.model}</div>
+                          <div className="text-xs text-muted-foreground">{status.model}</div>
                         </div>
                       </div>
                       <div className="text-sm">
@@ -507,23 +509,27 @@ export default function TestPage() {
                     </div>
                   ))}
                 </div>
-              </div>
+                </CardContent>
+              </Card>
             )}
 
             {summary && (
-              <div className="bg-white rounded-lg shadow p-6 mb-6">
-                <h2 className="text-lg font-semibold mb-4">Test Summary</h2>
+              <Card className="mb-6 bg-gradient-to-br from-card via-card to-accent/10 border-accent/30">
+                <CardHeader>
+                  <CardTitle>Test Summary</CardTitle>
+                </CardHeader>
+                <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div>
-                    <p className="text-sm text-gray-500">Models Tested</p>
+                    <p className="text-sm text-muted-foreground">Models Tested</p>
                     <p className="text-2xl font-bold">{summary.totalModels}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Successful</p>
+                    <p className="text-sm text-muted-foreground">Successful</p>
                     <p className="text-2xl font-bold text-green-600">{summary.successfulModels}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Consensus</p>
+                    <p className="text-sm text-muted-foreground">Consensus</p>
                     <p className="text-2xl font-bold">
                       {summary.hasConsensus ? (
                         <span className="text-green-600">✓ {summary.consensusCount} txns</span>
@@ -535,17 +541,17 @@ export default function TestPage() {
                   {summary.successfulModels > 0 && (
                     <>
                       <div>
-                        <p className="text-sm text-gray-500">Fastest</p>
+                        <p className="text-sm text-muted-foreground">Fastest</p>
                         <p className="text-sm font-medium truncate">{summary.fastestModel?.split('/').pop()}</p>
-                        <p className="text-xs text-gray-600">{formatTime(summary.fastestTime)}</p>
+                        <p className="text-xs text-muted-foreground">{formatTime(summary.fastestTime)}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Slowest</p>
+                        <p className="text-sm text-muted-foreground">Slowest</p>
                         <p className="text-sm font-medium truncate">{summary.slowestModel?.split('/').pop()}</p>
-                        <p className="text-xs text-gray-600">{formatTime(summary.slowestTime)}</p>
+                        <p className="text-xs text-muted-foreground">{formatTime(summary.slowestTime)}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Speed Range</p>
+                        <p className="text-sm text-muted-foreground">Speed Range</p>
                         <p className="text-sm font-medium">
                           {((summary.slowestTime / summary.fastestTime).toFixed(1))}x difference
                         </p>
@@ -553,51 +559,47 @@ export default function TestPage() {
                     </>
                   )}
                 </div>
-              </div>
+                </CardContent>
+              </Card>
             )}
 
             {results.length > 0 && (
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="p-6 flex justify-between items-center">
-                  <h2 className="text-lg font-semibold">Model Results</h2>
+              <Card className="overflow-hidden bg-gradient-to-br from-card via-card to-secondary/5 border-secondary/20">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Model Results</CardTitle>
                   <div className="flex gap-2">
-                    <button
+                    <Button
                       onClick={() => setSortBy('time')}
-                      className={`px-3 py-1 rounded text-sm font-medium ${
-                        sortBy === 'time'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
+                      variant={sortBy === 'time' ? 'default' : 'outline'}
+                      size="sm"
                     >
                       Sort by Time
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => setSortBy('cost')}
-                      className={`px-3 py-1 rounded text-sm font-medium ${
-                        sortBy === 'cost'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
+                      variant={sortBy === 'cost' ? 'default' : 'outline'}
+                      size="sm"
                     >
                       Sort by Cost
-                    </button>
+                    </Button>
                   </div>
-                </div>
-                <div className="overflow-x-auto">
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-gray-50 border-t border-b">
+                    <thead className="bg-muted border-t border-b">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Model</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Cost</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Txns</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Outflow</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Inflow</th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Rank</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Model</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">Time</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">Cost</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">Txns</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">Outflow</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">Inflow</th>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="divide-y divide-border">
                       {[...results].sort((a, b) => {
                         // Put errors last
                         if (a.error && !b.error) return 1;
@@ -617,21 +619,21 @@ export default function TestPage() {
                         const rank = result.error ? '-' : (sortedResults.filter((r, i) => i < idx && !r.error).length + 1);
 
                         return (
-                          <tr key={result.model} className={isWinner ? 'bg-green-50' : result.error ? 'bg-red-50' : ''}>
+                          <tr key={result.model} className={isWinner ? 'bg-green-500/10' : result.error ? 'bg-red-500/10' : ''}>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               {isWinner && <span className="text-2xl">🏆</span>}
                               {!isWinner && <span className="text-sm font-medium text-gray-600">{rank}</span>}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div>
-                                <div className="text-sm font-medium text-gray-900">
+                                <div className="text-sm font-medium text-foreground">
                                   {AVAILABLE_MODELS.find(m => m.id === result.model)?.name || result.model}
                                 </div>
-                                <div className="text-xs text-gray-500">{result.model}</div>
+                                <div className="text-xs text-muted-foreground">{result.model}</div>
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                              <span className={`text-sm font-medium ${isWinner ? 'text-green-600' : 'text-gray-900'}`}>
+                              <span className={`text-sm font-medium ${isWinner ? 'text-green-600' : 'text-foreground'}`}>
                                 {result.error ? '-' : formatTime(result.processingTime)}
                               </span>
                             </td>
@@ -652,14 +654,14 @@ export default function TestPage() {
                             <td className="px-6 py-4 whitespace-nowrap">
                               {result.error ? (
                                 <div className="text-center">
-                                  <span className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded-full">Failed</span>
+                                  <Badge variant="destructive" className="text-xs">Failed</Badge>
                                   <div className="text-xs text-red-600 mt-1 max-w-xs truncate" title={result.error}>
                                     {result.error}
                                   </div>
                                 </div>
                               ) : (
                                 <div className="text-center">
-                                  <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">Success</span>
+                                  <Badge variant="default" className="text-xs bg-green-600">Success</Badge>
                                 </div>
                               )}
                             </td>
@@ -668,18 +670,19 @@ export default function TestPage() {
                       })}
                     </tbody>
                   </table>
-                </div>
-              </div>
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
             {!results.length && !isLoading && (
-              <div className="bg-white rounded-lg shadow p-12 text-center">
-                <svg className="w-24 h-24 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No test results yet</h3>
-                <p className="text-gray-500">Select an image and models to begin testing</p>
-              </div>
+              <Card className="bg-gradient-to-br from-card via-card to-muted/20 border-muted/30">
+                <CardContent className="py-12 text-center">
+                <BarChart3 className="w-24 h-24 mx-auto text-muted-foreground/30 mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No test results yet</h3>
+                <p className="text-muted-foreground">Select an image and models to begin testing</p>
+                </CardContent>
+              </Card>
             )}
           </div>
         </div>

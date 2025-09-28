@@ -179,7 +179,7 @@ export default function FileUploader({ onFileProcess, isLoading, customPrompt }:
 
           {/* Process Button */}
           <Button
-            className="w-full"
+            className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
             size="lg"
             onClick={handleProcess}
             disabled={isLoading || selectedFiles.length === 0}
