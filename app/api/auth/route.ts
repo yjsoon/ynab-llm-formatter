@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession, verifyCredentials } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
+import { verifyCredentials } from '@/lib/server-auth';
 
 export async function POST(request: NextRequest) {
   try {
