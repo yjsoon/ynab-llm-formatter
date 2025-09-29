@@ -2,14 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Receipt, Beaker, FileSpreadsheet } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Receipt, Beaker, FileSpreadsheet, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { Button } from '@/components/ui/button';
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -18,6 +21,20 @@ export default function Navbar() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    // Check if auth is enabled (by checking if we're not on the login page and we have access)
+    setIsAuthenticated(pathname !== '/login');
+  }, [pathname]);
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth', { method: 'DELETE' });
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   return (
     <nav className={cn(
@@ -61,8 +78,23 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Theme Toggle */}
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+
+            {/* Logout Button - only show when authenticated */}
+            {isAuthenticated && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleLogout}
+                className="h-9 w-9"
+                title="Logout"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </nav>
