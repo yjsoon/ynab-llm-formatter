@@ -6,9 +6,7 @@ import TransactionTable from '@/components/TransactionTable';
 import Navbar from '@/components/Navbar';
 import { Transaction } from '@/types/transaction';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp, AlertCircle, Info, Loader2 } from 'lucide-react';
+import { AlertCircle, Info, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
