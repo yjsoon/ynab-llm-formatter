@@ -78,12 +78,12 @@ export default function TransactionTable({ transactions, onTransactionsChange }:
             </CardDescription>
           </div>
           <div className="flex items-center gap-4">
-            <Badge variant="secondary" className="text-lg px-3 py-1">
+            <div className="text-sm px-3 py-1.5 bg-secondary/15 text-secondary rounded-md font-semibold">
               {editedTransactions.length} {editedTransactions.length === 1 ? 'transaction' : 'transactions'}
-            </Badge>
+            </div>
             <Button
               onClick={handleDownloadCSV}
-              className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600"
+              className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 cursor-pointer"
             >
               <Download className="mr-2 h-4 w-4" />
               Download CSV
@@ -166,7 +166,7 @@ export default function TransactionTable({ transactions, onTransactionsChange }:
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                       onClick={() => handleDeleteRow(index)}
                       title="Delete row"
                     >

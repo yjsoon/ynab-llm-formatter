@@ -238,9 +238,9 @@ export default function FileUploader({ onFileProcess, isLoading, customPrompt, s
                 >
                   <FileImage className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <span className="text-sm truncate flex-1" title={file.name}>{file.name}</span>
-                  <Badge variant="secondary" className="text-xs">
+                  <span className="text-xs px-2 py-0.5 bg-secondary/15 text-secondary rounded font-semibold">
                     {formatFileSize(file.size)}
-                  </Badge>
+                  </span>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -257,7 +257,7 @@ export default function FileUploader({ onFileProcess, isLoading, customPrompt, s
 
           {/* Process Button */}
           <Button
-            className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+            className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 cursor-pointer"
             size="lg"
             onClick={handleProcess}
             disabled={isLoading || selectedFiles.length === 0}
