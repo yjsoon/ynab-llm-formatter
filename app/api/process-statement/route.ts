@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 
 // LLM Configuration
-const LLM_PROVIDER = process.env.LLM_PROVIDER || 'z.ai';
+// Default to Google AI Studio if API key exists, but allow explicit override via LLM_PROVIDER env var
+const defaultProvider = process.env.GOOGLEAISTUDIO_API_KEY ? 'googleaistudio' :
+                       process.env.OPENROUTER_API_KEY ? 'openrouter' :
+                       process.env.Z_AI_API_KEY ? 'z.ai' : 'lm-studio';
+
+const GOOGLEAISTUDIO_API_KEY = process.env.GOOGLEAISTUDIO_API_KEY;
+const GOOGLEAISTUDIO_MODEL = process.env.GOOGLEAISTUDIO_MODEL || 'gemini-2.5-flash-lite';
 const Z_AI_API_KEY = process.env.Z_AI_API_KEY;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'google/gemini-flash-1.5-8b';
@@ -22,12 +28,50 @@ interface TransactionData {
   inflow?: string;
 }
 
+// Helper function to generate the common extraction prompt
+function generateExtractionPrompt(currentYear: number, currentMonth: number, customPrompt?: string | null): string {
+  return `Extract all credit card transactions from this statement image.
+
+Today's date: ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}
+
+Return a JSON array where each transaction has these fields:
+- date: YYYY-MM-DD format (use transaction date, not posting date)
+- payee: merchant name
+- memo: foreign currency (e.g. "USD 50.00") or location only, leave empty if none
+- outflow: debit amount with $ (e.g. "$123.45") or empty string ""
+- inflow: credit amount with $ (e.g. "$50.00") or empty string ""
+
+Rules:
+- Date format: Intelligently parse dates which may be in DD/MM/YYYY, MM/DD/YYYY or other formats
+- For ambiguous dates (e.g., 04/06 could be April 6 or June 4):
+  * Prefer DD/MM interpretation when both are valid
+  * Choose the date closest to ${currentMonth}/${currentYear}
+- Each transaction has EITHER outflow OR inflow, never both
+- If the statement omits the year, assume the entire statement belongs to a single year. Use any printed statement year if present; otherwise keep the same inferred year for every row even when the month number wraps around.
+- Do NOT include reference numbers in memo
+${customPrompt ? `
+Additional instructions from user:
+${customPrompt}` : ''}
+
+Return ONLY the JSON array, no other text.`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const selectedModel = formData.get('model') as string;
+    const selectedProvider = formData.get('provider') as string;
     const customPrompt = formData.get('customPrompt') as string | null;
+
+    // Determine which provider to use - frontend selection takes priority
+    // Default to Google AI Studio when no explicit selection and GAI API key exists
+    let effectiveProvider = selectedProvider || process.env.LLM_PROVIDER || defaultProvider;
+    
+    // Force Google AI Studio as default when both API keys exist but no explicit provider chosen
+    if (!selectedProvider && !process.env.LLM_PROVIDER && process.env.GOOGLEAISTUDIO_API_KEY) {
+      effectiveProvider = 'googleaistudio';
+    }
 
     if (!file) {
       return NextResponse.json(
@@ -45,18 +89,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Check configuration based on provider
-    if (LLM_PROVIDER === 'z.ai' && !Z_AI_API_KEY) {
-      console.error('Z_AI_API_KEY not configured');
+    if (effectiveProvider === 'googleaistudio' && !GOOGLEAISTUDIO_API_KEY) {
+      console.error('GOOGLEAISTUDIO_API_KEY not configured');
       return NextResponse.json(
-        { error: 'Z.AI API key not configured' },
+        { error: 'Google AI Studio API key not configured' },
         { status: 500 }
       );
     }
 
-    if (LLM_PROVIDER === 'openrouter' && !OPENROUTER_API_KEY) {
+    if (effectiveProvider === 'openrouter' && !OPENROUTER_API_KEY) {
       console.error('OPENROUTER_API_KEY not configured');
       return NextResponse.json(
         { error: 'OpenRouter API key not configured' },
+        { status: 500 }
+      );
+    }
+
+    if (effectiveProvider === 'z.ai' && !Z_AI_API_KEY) {
+      console.error('Z_AI_API_KEY not configured');
+      return NextResponse.json(
+        { error: 'Z.AI API key not configured' },
         { status: 500 }
       );
     }
@@ -78,7 +130,88 @@ export async function POST(request: NextRequest) {
       let response;
       let transactions: TransactionData[] = [];
 
-      if (LLM_PROVIDER === 'lm-studio') {
+      if (effectiveProvider === 'googleaistudio') {
+        // GOOGLE AI STUDIO PATH - Isolated implementation
+        console.log(`Calling Google AI Studio API with model: ${GOOGLEAISTUDIO_MODEL}`);
+
+        const prompt = generateExtractionPrompt(currentYear, currentMonth, customPrompt);
+
+        // Google AI Studio API format - separate text and image parts
+        const requestBody = {
+          contents: [{
+            parts: [
+              {
+                text: prompt
+              },
+              {
+                inlineData: {
+                  mimeType: mimeType,
+                  data: base64
+                }
+              }
+            ]
+          }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 4000
+          }
+        };
+
+        response = await axios.post(
+          `https://generativelanguage.googleapis.com/v1beta/models/${GOOGLEAISTUDIO_MODEL}:generateContent?key=${GOOGLEAISTUDIO_API_KEY}`,
+          requestBody,
+          {
+            headers: { 'Content-Type': 'application/json' }
+          }
+        );
+
+      } else if (effectiveProvider === 'openrouter') {
+        // OPENROUTER PATH - Isolated implementation
+        const modelToUse = selectedModel || OPENROUTER_MODEL;
+
+        console.log(`Calling OpenRouter API with model: ${modelToUse}`);
+
+        const prompt = generateExtractionPrompt(currentYear, currentMonth, customPrompt);
+
+        const messages = [
+          {
+            role: 'system',
+            content: 'You are a financial data extraction assistant. Extract credit card transactions and return them in JSON format.'
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: prompt
+              },
+              {
+                type: 'image_url',
+                image_url: { url: imageData }
+              }
+            ]
+          }
+        ];
+
+        response = await axios.post(
+          'https://openrouter.ai/api/v1/chat/completions',
+          {
+            model: modelToUse,
+            messages,
+            temperature: 0.1,
+            max_tokens: 4000
+          },
+          {
+            headers: {
+              'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+              'Content-Type': 'application/json',
+              'HTTP-Referer': 'http://localhost:3000',
+              'X-Title': 'YNAB Statement Formatter'
+            }
+          }
+        );
+
+      } else if (effectiveProvider === 'lm-studio') {
         // LOCAL MODEL PATH - Two-step CSV approach
         console.log(`Calling LM Studio: ${LM_STUDIO_MODEL}`);
 
@@ -166,73 +299,6 @@ Output only the JSON array starting with [ and ending with ]`
         response = jsonResponse;
         console.log('Step 2 - Converted to JSON');
 
-      } else if (LLM_PROVIDER === 'openrouter') {
-        // OPENROUTER PATH - Direct JSON extraction
-        // Use selected model if provided, otherwise fall back to env variable
-        const modelToUse = selectedModel || OPENROUTER_MODEL;
-        console.log(`Calling OpenRouter API with model: ${modelToUse}`);
-
-        const messages = [
-          {
-            role: 'system',
-            content: 'You are a financial data extraction assistant. Extract credit card transactions and return them in JSON format.'
-          },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: `Extract all credit card transactions from this statement image.
-
-Today's date: ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
-
-Return a JSON array where each transaction has these fields:
-- date: YYYY-MM-DD format (use transaction date, not posting date)
-- payee: merchant name
-- memo: foreign currency (e.g. "USD 50.00") or location only, leave empty if none
-- outflow: debit amount with $ (e.g. "$123.45") or empty string ""
-- inflow: credit amount with $ (e.g. "$50.00") or empty string ""
-
-Rules:
-- Date format: Intelligently parse dates which may be in DD/MM/YYYY, MM/DD/YYYY or other formats
-- For ambiguous dates (e.g., 04/06 could be April 6 or June 4):
-  * Prefer DD/MM interpretation when both are valid
-  * Choose the date closest to ${currentMonth}/${currentYear}
-- Each transaction has EITHER outflow OR inflow, never both
-- If the statement omits the year, assume the entire statement belongs to a single year. Use any printed statement year if present; otherwise keep the same inferred year for every row even when the month number wraps around.
-- Do NOT include reference numbers in memo
-${customPrompt ? `
-Additional instructions from user:
-${customPrompt}` : ''}
-
-Return ONLY the JSON array, no other text.`
-              },
-              {
-                type: 'image_url',
-                image_url: { url: imageData }
-              }
-            ]
-          }
-        ];
-
-        response = await axios.post(
-          'https://openrouter.ai/api/v1/chat/completions',
-          {
-            model: modelToUse,
-            messages,
-            temperature: 0.1,
-            max_tokens: 4000
-          },
-          {
-            headers: {
-              'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-              'Content-Type': 'application/json',
-              'HTTP-Referer': 'http://localhost:3000',
-              'X-Title': 'YNAB Statement Formatter'
-            }
-          }
-        );
-
       } else {
         // Z.AI PATH - Direct JSON extraction
         const model = 'glm-4.5v';
@@ -248,30 +314,7 @@ Return ONLY the JSON array, no other text.`
             content: [
               {
                 type: 'text',
-                text: `Extract all credit card transactions from this statement image.
-
-Today's date: ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
-
-Return a JSON array where each transaction has these fields:
-- date: YYYY-MM-DD format (use transaction date, not posting date)
-- payee: merchant name
-- memo: foreign currency (e.g. "USD 50.00") or location only, leave empty if none
-- outflow: debit amount with $ (e.g. "$123.45") or empty string ""
-- inflow: credit amount with $ (e.g. "$50.00") or empty string ""
-
-Rules:
-- Date format: Intelligently parse dates which may be in DD/MM/YYYY, MM/DD/YYYY or other formats
-- For ambiguous dates (e.g., 04/06 could be April 6 or June 4):
-  * Prefer DD/MM interpretation when both are valid
-  * Choose the date closest to ${currentMonth}/${currentYear}
-- Each transaction has EITHER outflow OR inflow, never both
-- If the statement omits the year, assume the entire statement belongs to a single year. Use any printed statement year if present; otherwise keep the same inferred year for every row even when the month number wraps around.
-- Do NOT include reference numbers in memo
-${customPrompt ? `
-Additional instructions from user:
-${customPrompt}` : ''}
-
-Return ONLY the JSON array, no other text.`
+                text: generateExtractionPrompt(currentYear, currentMonth, customPrompt)
               },
               {
                 type: 'image_url',
@@ -300,7 +343,15 @@ Return ONLY the JSON array, no other text.`
 
       // Parse the response
       try {
-        const rawContent = response?.data?.choices?.[0]?.message?.content;
+        let rawContent;
+        
+        // Handle different response formats based on provider
+        if (effectiveProvider === 'googleaistudio') {
+          rawContent = response?.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        } else {
+          // OpenRouter, z.ai, and others use the same format
+          rawContent = response?.data?.choices?.[0]?.message?.content;
+        }
         if (typeof rawContent !== "string") {
           console.error('Missing content in AI response:', response?.data);
           return NextResponse.json(
@@ -364,11 +415,13 @@ Return ONLY the JSON array, no other text.`
           status?: number;
         };
       };
-      const provider = LLM_PROVIDER === 'lm-studio' ? 'LM Studio' :
-                      LLM_PROVIDER === 'openrouter' ? 'OpenRouter' : 'z.ai';
+      // Fix provider name mapping - use the actual effectiveProvider value
+      const provider = effectiveProvider === 'googleaistudio' ? 'Google AI Studio' :
+                      effectiveProvider === 'openrouter' ? 'OpenRouter' :
+                      effectiveProvider === 'lm-studio' ? 'LM Studio' : 'z.ai';
       console.error(`${provider} API error:`, error.response?.data || error.message);
 
-      if (error.code === 'ECONNREFUSED' && LLM_PROVIDER === 'lm-studio') {
+      if (error.code === 'ECONNREFUSED' && effectiveProvider === 'lm-studio') {
         return NextResponse.json(
           { error: `Cannot connect to LM Studio at ${LM_STUDIO_URL}. Please ensure LM Studio is running.` },
           { status: 503 }

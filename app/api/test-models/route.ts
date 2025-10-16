@@ -1,8 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 
-// Get OpenRouter API key
+// LLM Configuration - same as main API
+const defaultProvider = process.env.GOOGLEAISTUDIO_API_KEY ? 'googleaistudio' :
+                       process.env.OPENROUTER_API_KEY ? 'openrouter' :
+                       process.env.Z_AI_API_KEY ? 'z.ai' : 'lm-studio';
+
+const GOOGLEAISTUDIO_API_KEY = process.env.GOOGLEAISTUDIO_API_KEY;
+const GOOGLEAISTUDIO_MODEL = process.env.GOOGLEAISTUDIO_MODEL || 'gemini-2.5-flash-lite';
+const Z_AI_API_KEY = process.env.Z_AI_API_KEY;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const LM_STUDIO_URL = process.env.LM_STUDIO_URL || 'http://localhost:1234/v1';
+const LM_STUDIO_MODEL = process.env.LM_STUDIO_MODEL || 'qwen2.5-vl-7b-instruct';
+
+// Helper function to determine provider from model ID
+function getProviderForModel(model: string): string {
+  if (model === 'gemini-2.5-flash-lite' || model === 'gemini-2.0-flash-lite-001') {
+    return 'googleaistudio';
+  }
+  if (model === 'glm-4.5v') {
+    return 'z.ai';
+  }
+  if (model.includes('/')) {
+    return 'openrouter';
+  }
+  // Default to OpenRouter for unknown models
+  return 'openrouter';
+}
 
 interface ModelTestRequest {
   models: string[];
@@ -37,6 +61,7 @@ async function processWithModel(
   imageData: string
 ): Promise<ModelResult> {
   const startTime = Date.now();
+  const provider = getProviderForModel(model);
 
   try {
     // Get current date for year inference
@@ -44,17 +69,7 @@ async function processWithModel(
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth() + 1;
 
-    const messages = [
-      {
-        role: 'system',
-        content: 'You are a financial data extraction assistant. Extract credit card transactions and return them in JSON format.'
-      },
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'text',
-            text: `Extract all credit card transactions from this statement image.
+    const prompt = `Extract all credit card transactions from this statement image.
 
 Today's date: ${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}
 
@@ -74,37 +89,115 @@ Rules:
 - If the statement omits the year, assume the entire statement belongs to a single year. Use any printed statement year if present; otherwise keep the same inferred year for every row even when the month number wraps around.
 - Do NOT include reference numbers in memo
 
-Return ONLY the JSON array, no other text.`
-          },
-          {
-            type: 'image_url',
-            image_url: { url: imageData }
-          }
-        ]
-      }
-    ];
+Return ONLY the JSON array, no other text.`;
 
-    const response = await axios.post(
-      'https://openrouter.ai/api/v1/chat/completions',
-      {
-        model,
-        messages,
-        temperature: 0.1,
-        max_tokens: 4000
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'http://localhost:3000',
-          'X-Title': 'YNAB Model Tester'
+    let response;
+
+    if (provider === 'googleaistudio') {
+      // Google AI Studio API
+      const base64 = imageData.split(',')[1];
+      const mimeType = imageData.split(':')[1].split(';')[0];
+
+      const requestBody = {
+        contents: [{
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType, data: base64 } }
+          ]
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 4000
         }
-      }
-    );
+      };
 
-    // Parse the response
-    let content = response.data.choices[0].message.content;
-    console.log(`${model} response:`, content.substring(0, 200));
+      response = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GOOGLEAISTUDIO_API_KEY}`,
+        requestBody,
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+    } else if (provider === 'z.ai') {
+      // Z.AI API
+      const messages = [
+        {
+          role: 'system',
+          content: 'You are a financial data extraction assistant. Extract credit card transactions and return them in JSON format.'
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: imageData } }
+          ]
+        }
+      ];
+
+      response = await axios.post(
+        'https://api.z.ai/api/paas/v4/chat/completions',
+        {
+          model: 'glm-4.5v',
+          messages,
+          temperature: 0.1,
+          max_tokens: 4000
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${Z_AI_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    } else {
+      // OpenRouter API (default)
+      const messages = [
+        {
+          role: 'system',
+          content: 'You are a financial data extraction assistant. Extract credit card transactions and return them in JSON format.'
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            { type: 'image_url', image_url: { url: imageData } }
+          ]
+        }
+      ];
+
+      response = await axios.post(
+        'https://openrouter.ai/api/v1/chat/completions',
+        {
+          model,
+          messages,
+          temperature: 0.1,
+          max_tokens: 4000
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'http://localhost:3000',
+            'X-Title': 'YNAB Model Tester'
+          }
+        }
+      );
+    }
+
+    // Parse the response based on provider
+    let content;
+    let usage = null;
+
+    if (provider === 'googleaistudio') {
+      content = response?.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    } else {
+      content = response?.data?.choices?.[0]?.message?.content;
+      usage = response?.data?.usage;
+    }
+
+    console.log(`${model} (${provider}) response:`, content?.substring(0, 200));
+
+    if (!content || typeof content !== "string") {
+      throw new Error('No content received from API');
+    }
 
     // Clean up common issues
     content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '');
@@ -135,15 +228,13 @@ Return ONLY the JSON array, no other text.`
 
     const processingTime = Date.now() - startTime;
 
-    // Extract token usage and cost from response headers
-    const usage = response.data.usage;
+    // Calculate cost (only available for OpenRouter)
     let cost = 0;
     const tokens = { prompt: 0, completion: 0 };
 
     if (usage) {
       tokens.prompt = usage.prompt_tokens || 0;
       tokens.completion = usage.completion_tokens || 0;
-      // OpenRouter provides total cost in the response
       cost = usage.total_cost || 0;
     }
 
@@ -161,7 +252,7 @@ Return ONLY the JSON array, no other text.`
   } catch (error) {
     const processingTime = Date.now() - startTime;
     const err = error as Error & { response?: { data?: { error?: { message?: string } } } };
-    console.error(`Error processing with ${model}:`, err.response?.data || err.message);
+    console.error(`Error processing with ${model} (${provider}):`, err.response?.data || err.message);
 
     return {
       model,
@@ -178,10 +269,14 @@ Return ONLY the JSON array, no other text.`
 
 export async function POST(request: NextRequest) {
   try {
-    // Check for API key
-    if (!OPENROUTER_API_KEY) {
+    // Check for at least one API key
+    const hasGAIKey = !!GOOGLEAISTUDIO_API_KEY;
+    const hasOpenRouterKey = !!OPENROUTER_API_KEY;
+    const hasZAIKey = !!Z_AI_API_KEY;
+
+    if (!hasGAIKey && !hasOpenRouterKey && !hasZAIKey) {
       return NextResponse.json(
-        { error: 'OpenRouter API key not configured' },
+        { error: 'No API keys configured. Please configure at least one provider (Google AI Studio, OpenRouter, or Z.AI)' },
         { status: 500 }
       );
     }
