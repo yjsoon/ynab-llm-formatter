@@ -10,10 +10,15 @@ import { Upload, BarChart3 } from 'lucide-react';
 
 // Available models for testing
 const AVAILABLE_MODELS = [
+  // Google AI Studio
+  { id: 'gemini-2.5-flash-lite', name: '2.5-flash-lite (GAI)', category: 'googleaistudio' },
+  { id: 'gemini-2.0-flash-lite-001', name: '2.0-flash-lite-001 (GAI)', category: 'googleaistudio' },
+
   // Anthropic
   { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku', category: 'anthropic' },
+  { id: 'anthropic/claude-haiku-4.5', name: 'Claude Haiku 4.5', category: 'anthropic' },
 
-  // Google
+  // Google (OpenRouter)
   { id: 'google/gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', category: 'google' },
 
   // Meta
@@ -396,6 +401,14 @@ export default function TestPage() {
                   className="h-7 px-3 text-xs"
                 >
                   All Google
+                </Button>
+                <Button
+                  onClick={() => handleSelectCategory('googleaistudio')}
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-3 text-xs"
+                >
+                  All GAI
                 </Button>
                 <Button
                   onClick={() => handleSelectCategory('meta')}
