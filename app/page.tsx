@@ -144,22 +144,31 @@ export default function Home() {
     const allTransactions: Transaction[] = [];
     const errors: string[] = [];
 
+    // Helper function to determine provider based on model selection
+    const getProviderForModel = (model: string): Provider => {
+      if (['gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-pro'].includes(model)) {
+        return 'googleaistudio';
+      }
+      if (model === 'glm-4.5v') {
+        return 'z.ai';
+      }
+      if (model.includes('/')) {
+        return 'openrouter';
+      }
+      // Default to openrouter for any other models
+      return 'openrouter';
+    };
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       setProcessingProgress(`Processing ${i + 1} of ${files.length}: ${file.name}`);
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('model', selectedModel);
-      if (customInstructions) {
-        formData.append('customPrompt', customInstructions);
-      }
 
       try {
         const formData = new FormData();
         formData.append('file', file);
         if (selectedModel) {
           formData.append('model', selectedModel);
+          formData.append('provider', getProviderForModel(selectedModel));
         }
         if (customInstructions) {
           formData.append('customPrompt', customInstructions);
