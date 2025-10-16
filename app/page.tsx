@@ -33,7 +33,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [processingProgress, setProcessingProgress] = useState<string>('');
-  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-flash-lite');
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
   const [currentProvider, setCurrentProvider] = useState<Provider>('googleaistudio');
   const [customPrompt, setCustomPrompt] = useState<string>('');
@@ -117,9 +117,6 @@ export default function Home() {
     ];
 
     setAvailableModels(models);
-    
-    // Set default to Google AI Studio's 2.5-flash-lite as it's the preferred default
-    setSelectedModel('gemini-2.5-flash-lite');
   }, []);
 
   const getCurrentModelDisplay = () => {

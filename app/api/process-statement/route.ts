@@ -7,9 +7,6 @@ const defaultProvider = process.env.GOOGLEAISTUDIO_API_KEY ? 'googleaistudio' :
                        process.env.OPENROUTER_API_KEY ? 'openrouter' :
                        process.env.Z_AI_API_KEY ? 'z.ai' : 'lm-studio';
 
-
-
-
 const GOOGLEAISTUDIO_API_KEY = process.env.GOOGLEAISTUDIO_API_KEY;
 const GOOGLEAISTUDIO_MODEL = process.env.GOOGLEAISTUDIO_MODEL || 'gemini-2.5-flash-lite';
 const Z_AI_API_KEY = process.env.Z_AI_API_KEY;
@@ -75,8 +72,6 @@ export async function POST(request: NextRequest) {
     if (!selectedProvider && !process.env.LLM_PROVIDER && process.env.GOOGLEAISTUDIO_API_KEY) {
       effectiveProvider = 'googleaistudio';
     }
-
-    
 
     if (!file) {
       return NextResponse.json(
@@ -172,10 +167,8 @@ export async function POST(request: NextRequest) {
 
       } else if (effectiveProvider === 'openrouter') {
         // OPENROUTER PATH - Isolated implementation
-        let modelToUse = selectedModel || OPENROUTER_MODEL;
-        
-        
-        
+        const modelToUse = selectedModel || OPENROUTER_MODEL;
+
         console.log(`Calling OpenRouter API with model: ${modelToUse}`);
 
         const prompt = generateExtractionPrompt(currentYear, currentMonth, customPrompt);
