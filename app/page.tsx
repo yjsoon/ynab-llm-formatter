@@ -17,19 +17,15 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 
-// Top performing models from testing
-const OPENROUTER_MODELS = [
-  { id: 'google/gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite', speed: '3.95s', free: false },
-  { id: 'mistralai/pixtral-12b', name: 'Pixtral 12B', speed: '5.64s', free: false },
-  { id: 'anthropic/claude-3-haiku', name: 'Claude 3 Haiku', speed: '6.80s', free: false },
-  { id: 'bytedance/ui-tars-1.5-7b', name: 'UI-TARS 1.5 7B', speed: '12.26s', free: false },
-  { id: 'meta-llama/llama-4-scout:free', name: 'Llama 4 Scout', speed: '12.52s', free: true },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', speed: '15.38s', free: false },
-  { id: 'qwen/qwen-2.5-vl-7b-instruct', name: 'Qwen 2.5 VL 7B', speed: '15.57s', free: false },
-  { id: 'meta-llama/llama-3.2-11b-vision-instruct', name: 'Llama 3.2 11B Vision', speed: '18.69s', free: false },
-  { id: 'google/gemma-3-27b-it:free', name: 'Gemma 3 27B', speed: '19.45s', free: true },
-  { id: 'qwen/qwen2.5-vl-32b-instruct:free', name: 'Qwen 2.5 VL 32B', speed: '20.13s', free: true },
-];
+type Provider = 'googleaistudio' | 'openrouter' | 'z.ai' | 'lm-studio';
+
+interface ModelOption {
+  id: string;
+  name: string;
+  provider: Provider;
+  displayName: string;
+}
+
 
 export default function Home() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -37,21 +33,108 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [processingProgress, setProcessingProgress] = useState<string>('');
-  const [selectedModel, setSelectedModel] = useState<string>('google/gemini-2.5-flash-lite');
+  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
+  const [currentProvider, setCurrentProvider] = useState<Provider>('googleaistudio');
   const [customPrompt, setCustomPrompt] = useState<string>('');
 
-  // Load saved model preference from localStorage
   useEffect(() => {
-    const savedModel = localStorage.getItem('selectedOpenRouterModel');
-    if (savedModel && OPENROUTER_MODELS.some(m => m.id === savedModel)) {
-      setSelectedModel(savedModel);
-    }
+    // Set up all available models across all providers
+    const models: ModelOption[] = [
+      // Google AI Studio Models
+      {
+        id: 'gemini-2.5-flash-lite',
+        name: 'gemini-2.5-flash-lite',
+        provider: 'googleaistudio',
+        displayName: '2.5-flash-lite (GAI)'
+      },
+      {
+        id: 'gemini-2.5-flash',
+        name: 'gemini-2.5-flash',
+        provider: 'googleaistudio',
+        displayName: '2.5-flash (GAI)'
+      },
+      {
+        id: 'gemini-2.5-pro',
+        name: 'gemini-2.5-pro',
+        provider: 'googleaistudio',
+        displayName: '2.5-pro (GAI)'
+      },
+      
+      // OpenRouter Models
+      {
+        id: 'google/gemini-2.5-flash-lite',
+        name: 'google/gemini-2.5-flash-lite',
+        provider: 'openrouter',
+        displayName: 'Gemini 2.5 Flash Lite (OpenRouter)'
+      },
+      {
+        id: 'google/gemini-flash-1.5-8b',
+        name: 'google/gemini-flash-1.5-8b',
+        provider: 'openrouter',
+        displayName: 'Gemini Flash 1.5 8B (OpenRouter)'
+      },
+      {
+        id: 'google/gemini-flash-1.5',
+        name: 'google/gemini-flash-1.5',
+        provider: 'openrouter',
+        displayName: 'Gemini Flash 1.5 (OpenRouter)'
+      },
+      {
+        id: 'anthropic/claude-3.5-haiku',
+        name: 'anthropic/claude-3.5-haiku',
+        provider: 'openrouter',
+        displayName: 'Claude 3.5 Haiku (OpenRouter)'
+      },
+      {
+        id: 'openai/gpt-4o-mini',
+        name: 'openai/gpt-4o-mini',
+        provider: 'openrouter',
+        displayName: 'GPT-4o Mini (OpenRouter)'
+      },
+      {
+        id: 'meta-llama/llama-4-scout:free',
+        name: 'meta-llama/llama-4-scout:free',
+        provider: 'openrouter',
+        displayName: 'Llama 4 Scout (OpenRouter - FREE)'
+      },
+      
+      // Z.AI Models
+      {
+        id: 'glm-4.5v',
+        name: 'glm-4.5v',
+        provider: 'z.ai',
+        displayName: 'GLM-4.5V (Z.AI)'
+      },
+      
+      // LM Studio Models
+      {
+        id: 'qwen2.5-vl-7b-instruct',
+        name: 'qwen2.5-vl-7b-instruct',
+        provider: 'lm-studio',
+        displayName: 'Local Model (LM Studio)'
+      }
+    ];
+
+    setAvailableModels(models);
+    
+    // Set default to Google AI Studio's 2.5-flash-lite as it's the preferred default
+    setSelectedModel('gemini-2.5-flash-lite');
   }, []);
 
-  // Save model preference to localStorage
-  const handleModelChange = (model: string) => {
-    setSelectedModel(model);
-    localStorage.setItem('selectedOpenRouterModel', model);
+  const getCurrentModelDisplay = () => {
+    const model = availableModels.find(m => m.id === selectedModel);
+    return model ? model.displayName : 'No model selected';
+  };
+
+  const getProviderBadgeColor = (provider: Provider) => {
+    switch (provider) {
+      case 'googleaistudio': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'openrouter': return 'bg-green-100 text-green-800 border-green-200';
+      case 'z.ai': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'lm-studio': return 'bg-orange-100 text-orange-800 border-orange-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
   };
 
   const handleFileProcess = async (files: File[], customInstructions: string) => {
@@ -76,6 +159,15 @@ export default function Home() {
       }
 
       try {
+        const formData = new FormData();
+        formData.append('file', file);
+        if (selectedModel) {
+          formData.append('model', selectedModel);
+        }
+        if (customInstructions) {
+          formData.append('customPrompt', customInstructions);
+        }
+
         const response = await fetch('/api/process-statement', {
           method: 'POST',
           body: formData,
@@ -84,12 +176,12 @@ export default function Home() {
         const data = await response.json();
 
         if (!response.ok) {
-          errors.push(`${file.name}: ${data.error || 'Failed to process'}`);
+          errors.push(`${file.name}: ${data.error || 'Failed to process statement'}`);
         } else if (data.transactions && data.transactions.length > 0) {
           allTransactions.push(...data.transactions);
         }
       } catch (err) {
-        errors.push(`${file.name}: ${err instanceof Error ? err.message : 'Something went wrong'}`);
+        errors.push(`${file.name}: ${err instanceof Error ? err.message : 'An error occurred'}`);
       }
     }
 
@@ -140,21 +232,28 @@ export default function Home() {
                   <CardTitle>Upload Statements</CardTitle>
                   <CardDescription>Select AI model and upload your credit card statements</CardDescription>
                 </div>
-                <Select value={selectedModel} onValueChange={handleModelChange}>
-                  <SelectTrigger className="w-full sm:w-[280px]">
-                    <SelectValue placeholder="Select AI Model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {OPENROUTER_MODELS.map((model) => (
-                      <SelectItem key={model.id} value={model.id}>
-                        <div className="flex items-center gap-2">
-                          <span>{model.name}</span>
-                          {model.free && <Badge variant="secondary" className="text-xs">FREE</Badge>}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Model:</span>
+              <Select value={selectedModel} onValueChange={setSelectedModel}>
+                <SelectTrigger className="w-80">
+                  <SelectValue placeholder="Select model..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableModels.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      <div className="flex items-center gap-2">
+                        <span>{model.displayName}</span>
+                        <Badge variant="outline" className={`text-xs ${getProviderBadgeColor(model.provider)}`}>
+                          {model.provider === 'googleaistudio' ? 'GAI' :
+                           model.provider === 'openrouter' ? 'OpenRouter' :
+                           model.provider === 'z.ai' ? 'Z.AI' : 'Local'}
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
               </div>
             </CardHeader>
             <CardContent>
