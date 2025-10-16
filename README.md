@@ -4,210 +4,102 @@ Converts credit card statement images to YNAB-compatible CSV format using AI-pow
 
 ## Features
 
-- **AI-Powered Extraction**: Uses vision AI models to extract transactions from statement images
-- **Multiple AI Providers**: OpenRouter (cloud), z.ai (cloud), and LM Studio (local)
-- **Batch Processing**: Process multiple statement images at once
-- **Smart Date Parsing**: Handles DD/MM/YYYY, MM/DD/YYYY, and ambiguous date formats
-- **Custom Instructions**: Add specific prompts for your bank's format
-- **Editable Results**: Review and edit before downloading
-- **YNAB-Ready CSV**: Outputs in YNAB's expected format
+- AI-powered transaction extraction from statement images
+- Multi-provider support: Google AI Studio, OpenRouter, z.ai, LM Studio
+- Model Testing Lab to compare AI performance
+- Smart date parsing for various formats
+- Batch processing of multiple statements
+- Custom instructions for bank-specific formats
+- Editable results before export
 
-## YNAB CSV Format
+## Quick Start
 
-YNAB (You Need A Budget) expects CSV files with specific columns:
-
-| Column | Description | Example |
-|--------|-------------|---------|
-| **Date** | Transaction date in YYYY-MM-DD format | 2025-06-15 |
-| **Payee** | Merchant or company name | Starbucks |
-| **Memo** | Additional details (optional) | USD 5.50 |
-| **Outflow** | Money spent (debits) | $123.45 |
-| **Inflow** | Money received (credits) | $50.00 |
-
-**Important**: Each transaction should have EITHER an Outflow OR an Inflow value, never both.
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- npm or yarn
-- At least one AI provider API key (see below)
-
-### Installation
-
-1. Clone the repository:
+1. Clone and install:
 ```bash
 git clone https://github.com/yjsoon/ynab-llm-formatter.git
 cd ynab-formatter
-```
-
-2. Install dependencies:
-```bash
 npm install
 ```
 
-3. Create a `.env.local` file in the root directory:
+2. Configure API key (Google AI Studio recommended):
 ```bash
 cp .env.example .env.local
+# Edit .env.local with your API key
 ```
 
-4. Configure your AI provider (see Configuration section below)
-
-5. Start the development server:
+3. Start the server:
 ```bash
 npm run dev
 ```
 
-6. Open [http://localhost:3000](http://localhost:3000) in your browser
+4. Open [http://localhost:3000](http://localhost:3000)
 
 ## Configuration
 
-### AI Provider Options
+### Option 1: Google AI Studio (Default)
+```env
+LLM_PROVIDER=googleaistudio
+GOOGLEAISTUDIO_API_KEY=your_api_key_here
+GOOGLEAISTUDIO_MODEL=gemini-2.5-flash-lite
+```
 
-The app supports three AI provider options. Choose one and configure it in your `.env.local` file:
+Get API key from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
-#### Option 1: OpenRouter (Recommended)
-
-OpenRouter provides access to multiple AI models through a single API. Best for flexibility and reliability.
-
+### Option 2: OpenRouter
 ```env
 LLM_PROVIDER=openrouter
 OPENROUTER_API_KEY=your_api_key_here
-OPENROUTER_MODEL=google/gemini-flash-1.5-8b  # Optional, can be changed in UI
+OPENROUTER_MODEL=google/gemini-2.5-flash-lite
 ```
 
-**Getting an API Key:**
-1. Sign up at [openrouter.ai](https://openrouter.ai)
-2. Add credits to your account
-3. Copy your API key from settings
+Sign up at [openrouter.ai](https://openrouter.ai) for API access.
 
-**Available Models** (selectable in UI):
-- Gemini 2.5 Flash Lite (fastest)
-- Pixtral 12B
-- Claude 3 Haiku
-- Llama 4 Scout (FREE)
-- GPT-4o Mini
-- And more...
-
-#### Option 2: z.ai (Alternative Cloud)
-
-z.ai provides access to advanced Chinese AI models with good vision capabilities.
-
+### Option 3: z.ai
 ```env
 LLM_PROVIDER=z.ai
 Z_AI_API_KEY=your_api_key_here
 ```
 
-**Getting an API Key:**
-1. Sign up at [z.ai](https://z.ai)
-2. Navigate to API settings
-3. Generate and copy your API key
-
-#### Option 3: LM Studio (Local/Private)
-
-Run AI models locally on your machine for complete privacy. No data leaves your computer.
-
+### Option 4: LM Studio (Local)
 ```env
 LLM_PROVIDER=lm-studio
 LM_STUDIO_URL=http://localhost:1234/v1
-LM_STUDIO_MODEL=qwen2.5-vl-7b-instruct  # Or your loaded model
+LM_STUDIO_MODEL=qwen2.5-vl-7b-instruct
 ```
 
-**Setup Instructions:**
-1. Download [LM Studio](https://lmstudio.ai/)
-2. Download a vision-capable model (e.g., Qwen2.5-VL, Mini-CPM-V)
-3. Load the model in LM Studio
-4. Start the local server (usually on port 1234)
-5. Update `.env.local` with your model name
-
-**Note**: Local models require significant RAM (8GB+ recommended) and may be slower than cloud options.
+Download [LM Studio](https://lmstudio.ai/) and load a vision-capable model.
 
 ## Usage
 
-### Basic Usage
+1. Select AI model from dropdown
+2. Upload statement images (PNG, JPG, WebP)
+3. Add custom instructions if needed
+4. Process and review extracted transactions
+5. Download CSV for YNAB import
 
-1. **Select AI Model** (OpenRouter only): Choose from the dropdown in the top-right corner
-2. **Upload Statements**: Drag and drop or click to browse for statement images (PNG, JPG, WebP)
-3. **Add Custom Instructions** (Optional): Provide specific rules for your bank's format
-4. **Process**: Click the process button to extract transactions
-5. **Review & Edit**: Check extracted data and make corrections if needed
-6. **Download CSV**: Export the formatted CSV for YNAB import
-
-### Custom Instructions Examples
-
-Use the Custom Instructions field to handle bank-specific formats:
+### Custom Instructions
 
 - "Dates are in DD/MM/YYYY format"
-- "Ignore transactions marked as 'REVERSAL'"
+- "Ignore transactions marked as REVERSAL"
 - "Foreign currency amounts shown as (USD 50.00)"
-- "Use merchant name from description, not reference number"
 - "Statement is from DBS Bank Singapore"
 
-### Tips for Best Results
+## Model Testing Lab
 
-1. **Image Quality**: Use clear, high-resolution screenshots or scans
-2. **Full Transactions**: Ensure all transaction details are visible in the image
-3. **Multiple Pages**: Process multiple statement pages in one batch
-4. **Date Formats**: The AI handles most date formats automatically, but custom instructions can help with ambiguous cases
-5. **Review Results**: Always review extracted data before importing to YNAB
-
-## Model Testing
-
-Visit `/test` to access the Model Testing Arena where you can:
-- Compare extraction accuracy across different AI models
-- Test processing speed and costs
+Visit `/test` to compare AI models:
+- Test extraction accuracy across providers
+- Compare processing speeds and costs
 - Find the best model for your statement format
 
 ## Development
 
-### Tech Stack
-
-- **Framework**: Next.js 15.5 with App Router
-- **Styling**: Tailwind CSS v4
-- **AI Integration**: OpenRouter API, z.ai API, LM Studio
-- **CSV Generation**: PapaParse
-- **Language**: TypeScript
-
-### Project Structure
-
-```
-├── app/
-│   ├── api/
-│   │   ├── process-statement/   # Main extraction endpoint
-│   │   └── test-models/         # Model comparison endpoint
-│   ├── page.tsx                 # Main UI
-│   └── test/page.tsx            # Testing interface
-├── components/
-│   ├── FileUploader.tsx        # Drag-and-drop upload
-│   └── TransactionTable.tsx    # Results display/edit
-└── types/
-    └── transaction.ts           # TypeScript definitions
-```
-
-### Commands
-
 ```bash
-npm run dev      # Start development server
-npm run build    # Build for production
-npm run start    # Start production server
-npm run lint     # Run ESLint
+npm run dev    # Development server
+npm run build  # Production build
+npm run start  # Production server
+npm run lint   # ESLint
 ```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
 MIT
-
-## Acknowledgments
-
-- Built for the [YNAB](https://www.ynab.com) community
-- Powered by various AI model providers
-- Inspired by the need to quickly digitise paper statements
-
-## Support
-
-For issues, questions, or suggestions, please open an issue on [GitHub](https://github.com/yjsoon/ynab-llm-formatter/issues).
